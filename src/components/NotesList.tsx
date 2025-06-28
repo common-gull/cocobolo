@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { api } from '../utils/api';
 import type { NoteMetadata } from '../types';
 import { Icons } from './Icons';
@@ -9,7 +9,6 @@ import {
   notesLoadingAtom, 
   notesErrorAtom,
   loadNotesAtom,
-  addNoteAtom,
   addFolderAtom 
 } from '../stores/notesStore';
 import './NotesList.css';
@@ -430,7 +429,6 @@ export function TreeNotesList({
   const isLoading = useAtomValue(notesLoadingAtom);
   const error = useAtomValue(notesErrorAtom);
   const loadNotes = useSetAtom(loadNotesAtom);
-  const addNote = useSetAtom(addNoteAtom);
   const addFolder = useSetAtom(addFolderAtom);
 
   // Local state for folder tree structure

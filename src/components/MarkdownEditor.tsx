@@ -268,10 +268,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   vaultPath,
   sessionId,
   isDarkMode,
-  onClose,
   onError,
   onNoteUpdated,
-  onNoteDeleted
 }) => {
   const [title, setTitle] = useState(note.title);
   const [titleError, setTitleError] = useState('');
@@ -389,28 +387,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     // Trigger auto-save for title changes
     debouncedAutoSave();
   }, [debouncedAutoSave]);
-
-
-
-  // Handle close - check if we should delete empty notes
-  const handleClose = useCallback(async () => {
-    debouncedAutoSave.cancel();
-    
-    // Check if this is an empty note that should be deleted
-    const currentTitle = titleRef.current.trim();
-    const currentContent = contentRef.current.trim();
-    
-    const isEmpty = (!currentTitle || currentTitle === 'Untitled') && !currentContent;
-    
-    if (isEmpty && onNoteDeleted) {
-      // Delete the empty note using the callback
-      await onNoteDeleted(note.id);
-    }
-    
-    onClose();
-  }, [debouncedAutoSave, onClose, note.id, onNoteDeleted]);
-
-
 
   return (
     <div className="markdown-editor">

@@ -29,7 +29,6 @@ export function MainLayout({
   onLogout,
   onSelectNote,
   onCreateNote,
-  onNavigate,
   showSidebar = true 
 }: MainLayoutProps) {
   const { theme, setTheme } = useTheme();

@@ -80,7 +80,7 @@ export const addFolderAtom = atom(
 // Action atom for loading notes
 export const loadNotesAtom = atom(
   null,
-  async (get, set, { vaultPath, sessionId }: { vaultPath: string; sessionId: string }) => {
+  async (_get, set, { vaultPath, sessionId }: { vaultPath: string; sessionId: string }) => {
     set(notesLoadingAtom, true);
     set(notesErrorAtom, null);
     
