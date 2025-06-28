@@ -444,6 +444,21 @@ async fn delete_note(
     }
 }
 
+#[tauri::command]
+async fn delete_folder(
+    vault_path: String,
+    session_id: String,
+    folder_path: String
+) -> Result<bool, AppError> {
+    let path_buf = std::path::PathBuf::from(&vault_path);
+    let vault_manager = VaultManager::new(&path_buf);
+    
+    match vault_manager.delete_folder(&session_id, &folder_path) {
+        Ok(_) => Ok(true),
+        Err(_) => Ok(false), // Return false instead of error for simpler handling
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -472,7 +487,8 @@ pub fn run() {
             get_folders_list,
             load_note,
             save_note,
-            delete_note
+            delete_note,
+            delete_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

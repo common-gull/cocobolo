@@ -282,4 +282,20 @@ export const api = {
       throw new ApiError('Failed to delete note', error);
     }
   },
+
+  async deleteFolder(
+    vaultPath: string,
+    sessionId: string,
+    folderPath: string
+  ): Promise<boolean> {
+    try {
+      return await invoke<boolean>('delete_folder', {
+        vaultPath,
+        sessionId,
+        folderPath
+      });
+    } catch (error) {
+      throw new ApiError('Failed to delete folder', error);
+    }
+  },
 }; 

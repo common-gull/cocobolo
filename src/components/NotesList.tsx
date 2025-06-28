@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
+import { Menu, rem, Modal, Button, Text, Group } from '@mantine/core';
+import { IconTrash } from '@tabler/icons-react';
 import { api } from '../utils/api';
 import type { NoteMetadata } from '../types';
 import { Icons } from './Icons';
@@ -440,6 +442,34 @@ export function TreeNotesList({
     isExpanded: true 
   });
 
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    opened: boolean;
+    x: number;
+    y: number;
+    type: 'folder' | 'note';
+    target: string;
+  }>({
+    opened: false,
+    x: 0,
+    y: 0,
+    type: 'folder',
+    target: ''
+  });
+
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    opened: boolean;
+    type: 'folder' | 'note';
+    target: string;
+    title: string;
+  }>({
+    opened: false,
+    type: 'folder',
+    target: '',
+    title: ''
+  });
+
   // Load notes on mount
   useEffect(() => {
     if (vaultPath && sessionId) {
@@ -452,6 +482,30 @@ export function TreeNotesList({
     const newFolderTree = buildFolderTree(notes, folders);
     setFolderTree(newFolderTree);
   }, [notes, folders]);
+
+  // Close context menu on escape key or outside click
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setContextMenu(prev => ({ ...prev, opened: false }));
+      }
+    };
+
+    const handleClick = () => {
+      setContextMenu(prev => ({ ...prev, opened: false }));
+    };
+
+    if (contextMenu.opened) {
+      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('click', handleClick);
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('click', handleClick);
+      };
+    }
+
+    return () => {}; // Return empty cleanup function when not opened
+  }, [contextMenu.opened]);
 
   const buildFolderTree = (notes: NoteMetadata[], virtualFolders: string[]): FolderNode => {
     const root: FolderNode = { name: 'Root', path: '', children: [], notes: [], isExpanded: true };
@@ -550,27 +604,87 @@ export function TreeNotesList({
     }
   };
 
+  const showDeleteConfirmation = (type: 'folder' | 'note', target: string, title: string) => {
+    setConfirmDialog({
+      opened: true,
+      type,
+      target,
+      title
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { type, target } = confirmDialog;
+    setConfirmDialog(prev => ({ ...prev, opened: false }));
+
+    try {
+      let success = false;
+      if (type === 'folder') {
+        success = await api.deleteFolder(vaultPath, sessionId, target);
+        if (!success) {
+          alert('Failed to delete folder. The folder may contain notes or subfolders.');
+        }
+      } else {
+        success = await api.deleteNote(vaultPath, sessionId, target);
+        if (!success) {
+          alert('Failed to delete note. Please try again.');
+        }
+      }
+
+      if (success) {
+        // If we deleted the currently selected note, deselect it
+        if (type === 'note' && selectedNoteId === target && onSelectNote) {
+          onSelectNote('');
+        }
+        
+        // Reload notes to update the UI
+        loadNotes({ vaultPath, sessionId });
+      }
+    } catch (error) {
+      console.error(`Failed to delete ${type}:`, error);
+      alert(`Failed to delete ${type}. Please try again.`);
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, type: 'folder' | 'note', target: string) => {
+    e.preventDefault();
+    setContextMenu({
+      opened: true,
+      x: e.clientX,
+      y: e.clientY,
+      type,
+      target
+    });
+  };
+
+  const handleContextMenuAction = () => {
+    const note = notes.find(n => n.id === contextMenu.target);
+    const title = contextMenu.type === 'note' ? (note?.title || 'Unknown Note') : contextMenu.target;
+    
+    showDeleteConfirmation(contextMenu.type, contextMenu.target, title);
+    setContextMenu(prev => ({ ...prev, opened: false }));
+  };
+
   const renderFolder = (folder: FolderNode, level: number = 0): React.ReactNode => {
     const paddingLeft = level * 16;
     
     return (
       <div key={folder.path} className="tree-folder">
-        {folder.name !== 'Root' && (
-          <div 
-            className="tree-folder-header"
-            style={{ paddingLeft: `${paddingLeft}px` }}
-            onClick={() => toggleFolder(folder.path)}
-          >
-            <span className={`tree-folder-icon ${folder.isExpanded ? 'expanded' : ''}`}>
-              <Icons.chevronRight size="sm" />
-            </span>
-            <Icons.folder size="sm" />
-            <span className="tree-folder-name">{folder.name}</span>
-            <span className="tree-folder-count">({folder.notes.length + folder.children.reduce((sum, child) => sum + child.notes.length, 0)})</span>
-          </div>
-        )}
+        <div 
+          className="tree-folder-header"
+          style={{ paddingLeft: `${paddingLeft}px` }}
+          onClick={() => toggleFolder(folder.path)}
+                      onContextMenu={(e) => handleContextMenu(e, 'folder', folder.path)}
+        >
+          <span className={`tree-folder-icon ${folder.isExpanded ? 'expanded' : ''}`}>
+            <Icons.chevronRight size="sm" />
+          </span>
+          <Icons.folder size="sm" />
+          <span className="tree-folder-name">{folder.name}</span>
+          <span className="tree-folder-count">({folder.notes.length + folder.children.reduce((sum, child) => sum + child.notes.length, 0)})</span>
+        </div>
         
-        {(folder.isExpanded || folder.name === 'Root') && (
+        {folder.isExpanded && (
           <div className="tree-folder-content">
             {/* Render child folders first */}
             {folder.children.map(child => renderFolder(child, level + 1))}
@@ -580,8 +694,9 @@ export function TreeNotesList({
               <div
                 key={note.id}
                 className={`tree-note-item ${selectedNoteId === note.id ? 'selected' : ''}`}
-                style={{ paddingLeft: `${paddingLeft + (folder.name !== 'Root' ? 32 : 16)}px` }}
+                style={{ paddingLeft: `${paddingLeft + 32}px` }}
                 onClick={() => handleNoteClick(note.id)}
+                onContextMenu={(e) => handleContextMenu(e, 'note', note.id)}
                 title={note.title}
               >
                 <Icons.file size="sm" />
@@ -655,8 +770,88 @@ export function TreeNotesList({
       </div>
       
       <div className="tree-content">
-        {renderFolder(folderTree)}
+        {/* Render child folders first */}
+        {folderTree.children.map(child => renderFolder(child, 0))}
+        
+        {/* Render notes in root folder */}
+        {folderTree.notes.map(note => (
+          <div
+            key={note.id}
+            className={`tree-note-item ${selectedNoteId === note.id ? 'selected' : ''}`}
+            style={{ paddingLeft: '16px' }}
+            onClick={() => handleNoteClick(note.id)}
+            onContextMenu={(e) => handleContextMenu(e, 'note', note.id)}
+            title={note.title}
+          >
+            <Icons.file size="sm" />
+            <span className="tree-note-title">{note.title}</span>
+            {note.tags.length > 0 && (
+              <span className="tree-note-tags">({note.tags.length})</span>
+            )}
+          </div>
+        ))}
       </div>
+
+      {/* Context Menu */}
+      <Menu
+        opened={contextMenu.opened}
+        onClose={() => setContextMenu(prev => ({ ...prev, opened: false }))}
+        position="bottom-start"
+        shadow="md"
+        width={200}
+      >
+        <Menu.Target>
+          <div
+            style={{
+              position: 'fixed',
+              left: contextMenu.x,
+              top: contextMenu.y,
+              width: 1,
+              height: 1,
+              pointerEvents: 'none'
+            }}
+          />
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item
+            color="red"
+            leftSection={<IconTrash style={{ width: rem(14), height: rem(14) }} />}
+            onClick={handleContextMenuAction}
+          >
+            {contextMenu.type === 'folder' ? 'Delete Folder' : 'Delete Note'}
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+
+      {/* Confirmation Dialog */}
+      <Modal
+        opened={confirmDialog.opened}
+        onClose={() => setConfirmDialog(prev => ({ ...prev, opened: false }))}
+        title={`Delete ${confirmDialog.type === 'folder' ? 'Folder' : 'Note'}`}
+        centered
+      >
+        <Text size="sm" mb="lg">
+          Are you sure you want to delete {confirmDialog.type === 'folder' ? 'the folder' : 'the note'} "{confirmDialog.title}"?
+          {confirmDialog.type === 'folder' && ' This will only delete the folder if it contains no notes.'}
+          {confirmDialog.type === 'note' && ' This action cannot be undone.'}
+        </Text>
+
+        <Group justify="flex-end">
+          <Button
+            variant="default"
+            onClick={() => setConfirmDialog(prev => ({ ...prev, opened: false }))}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="red"
+            onClick={handleConfirmDelete}
+            leftSection={<IconTrash style={{ width: rem(16), height: rem(16) }} />}
+          >
+            Delete
+          </Button>
+        </Group>
+      </Modal>
     </div>
   );
 } 

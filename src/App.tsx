@@ -259,6 +259,13 @@ function AppContent() {
   const handleSelectNote = async (noteId: string) => {
     if (!vaultLocation || !sessionId) return;
 
+    // Handle deselection case
+    if (!noteId || noteId === '') {
+      setCurrentNote(null);
+      setCurrentView('main-app');
+      return;
+    }
+
     try {
       const note = await api.loadNote(vaultLocation, sessionId, noteId);
       setCurrentNote(note);

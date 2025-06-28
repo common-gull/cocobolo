@@ -883,6 +883,21 @@ impl VaultManager {
 
         Ok(())
     }
+
+    /// Delete a folder from the vault
+    pub fn delete_folder(&self, session_id: &str, folder_path: &str) -> Result<(), VaultError> {
+        let session = Self::get_session(session_id)
+            .ok_or_else(|| VaultError::InvalidPassword)?;
+
+        // Update notes index to remove the folder
+        self.update_notes_index(&session.encryption_key, |index| {
+            if let Err(e) = index.remove_folder(folder_path) {
+                eprintln!("Failed to remove folder {}: {}", folder_path, e);
+            }
+        })?;
+
+        Ok(())
+    }
 }
 
 mod base64 {
