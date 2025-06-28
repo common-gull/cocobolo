@@ -335,22 +335,55 @@ body {
   line-height: 1.6;
 }
 
+.card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: auto;
+}
+
 .card-action-button {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background: var(--accent-color);
-  color: white;
   border: none;
   border-radius: 8px;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  justify-content: center;
+  width: 100%;
 }
 
-.card-action-button:hover {
+.card-action-button.primary {
+  background: var(--accent-color);
+  color: white;
+}
+
+.card-action-button.primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.card-action-button.secondary {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.card-action-button.secondary:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-color);
+}
+
+.card-action-button:not(.primary):not(.secondary) {
+  background: var(--accent-color);
+  color: white;
+}
+
+.card-action-button:not(.primary):not(.secondary):hover {
   background: var(--accent-hover);
   transform: translateY(-1px);
 }
@@ -1210,6 +1243,66 @@ body {
   box-shadow: 
     -0.1em -0.05em 0 currentColor,
     -0.1em 0.05em 0 currentColor;
+}
+
+/* List Icon */
+.icon-list::before {
+  content: '';
+  position: absolute;
+  top: 0.2em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.05em;
+  background: currentColor;
+  box-shadow: 0 0.2em 0 currentColor, 0 0.4em 0 currentColor;
+}
+
+/* Keyboard Icon */
+.icon-keyboard::before {
+  content: '';
+  position: absolute;
+  top: 0.3em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.4em;
+  border: 0.05em solid currentColor;
+  border-radius: 0.05em;
+}
+
+.icon-keyboard::after {
+  content: '';
+  position: absolute;
+  top: 0.4em;
+  left: 0.2em;
+  width: 0.6em;
+  height: 0.05em;
+  background: currentColor;
+  box-shadow: 0 0.1em 0 currentColor;
+}
+
+/* Refresh Icon */
+.icon-refresh::before {
+  content: '';
+  position: absolute;
+  top: 0.15em;
+  left: 0.15em;
+  width: 0.7em;
+  height: 0.7em;
+  border: 0.05em solid currentColor;
+  border-radius: 50%;
+  border-top-color: transparent;
+  border-right-color: transparent;
+}
+
+.icon-refresh::after {
+  content: '';
+  position: absolute;
+  top: 0.25em;
+  left: 0.65em;
+  width: 0;
+  height: 0;
+  border: 0.05em solid transparent;
+  border-left: 0.1em solid currentColor;
 }
 
 /* Menu Icon - complete definition */

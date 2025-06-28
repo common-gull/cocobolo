@@ -94,4 +94,43 @@ export interface VaultUnlockState {
   rateLimitInfo: RateLimitInfo | null;
 }
 
-export type AppView = 'home' | 'vault-setup' | 'password-setup' | 'vault-unlock' | 'main-app'; 
+export type AppView = 'home' | 'vault-setup' | 'password-setup' | 'vault-unlock' | 'main-app' | 'create-note' | 'notes-list';
+
+// Note-related types
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  tags: string[];
+  folder_path?: string;
+}
+
+export interface NoteMetadata {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  tags: string[];
+  folder_path?: string;
+  content_preview: string; // First 100 chars of content
+}
+
+export interface CreateNoteRequest {
+  title: string;
+  content?: string;
+  tags?: string[];
+  folder_path?: string;
+}
+
+export interface CreateNoteResult {
+  success: boolean;
+  note?: Note;
+  error_message?: string;
+}
+
+export interface NotesIndex {
+  notes: NoteMetadata[];
+  last_updated: string;
+} 

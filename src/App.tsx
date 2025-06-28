@@ -3,6 +3,8 @@ import { api } from './utils/api';
 import { VaultLocationSelector } from './components/VaultLocationSelector';
 import { VaultPasswordSetup } from './components/VaultPasswordSetup';
 import { VaultUnlock } from './components/VaultUnlock';
+import { CreateNote } from './components/CreateNote';
+import { NotesList } from './components/NotesList';
 import { MainLayout } from './components/Layout/MainLayout';
 import { ThemeProvider } from './contexts/ThemeContext';
 import type { AppInfo, AppView, VaultSetupInfo, VaultInfo } from './types';
@@ -163,6 +165,30 @@ function App() {
     }
   };
 
+  const handleCreateNote = () => {
+    setCurrentView('create-note');
+  };
+
+  const handleNoteCreated = (noteId: string) => {
+    console.log('Note created:', noteId);
+    setCurrentView('notes-list');
+  };
+
+  const handleCancelCreateNote = () => {
+    setCurrentView('main-app');
+  };
+
+  const handleViewNotes = () => {
+    setCurrentView('notes-list');
+  };
+
+  const handleSelectNote = (noteId: string) => {
+    // TODO: Implement note viewing/editing
+    console.log('Selected note:', noteId);
+  };
+
+
+
   if (loading) {
     return (
       <div className="loading">
@@ -210,31 +236,37 @@ function App() {
           <div className="main-app-content">
             <div className="welcome-header">
               <h2>Welcome to your secure vault!</h2>
-              <p>Your vault is now unlocked and ready to use. This is where the main note-taking interface will be implemented.</p>
+              <p>Your vault is now unlocked and ready to use. Start creating and organizing your encrypted notes.</p>
             </div>
             
             <div className="dashboard-grid">
               <div className="dashboard-card">
                 <h3>
                   <span className="icon icon-file"></span>
-                  Recent Notes
+                  Notes
                 </h3>
-                <p>No notes yet. Start by creating your first note!</p>
-                <button className="card-action-button">
-                  <span className="icon icon-file"></span>
-                  Create Note
-                </button>
+                <p>Create, edit, and organize your encrypted notes.</p>
+                <div className="card-actions">
+                  <button className="card-action-button primary" onClick={handleCreateNote}>
+                    <span className="icon icon-file"></span>
+                    Create Note
+                  </button>
+                  <button className="card-action-button secondary" onClick={handleViewNotes}>
+                    <span className="icon icon-list"></span>
+                    View All Notes
+                  </button>
+                </div>
               </div>
               
               <div className="dashboard-card">
                 <h3>
                   <span className="icon icon-folder"></span>
-                  Folders
+                  Organization
                 </h3>
                 <p>Organize your notes with folders and tags.</p>
                 <button className="card-action-button">
                   <span className="icon icon-folder"></span>
-                  Create Folder
+                  Manage Folders
                 </button>
               </div>
               
@@ -244,7 +276,7 @@ function App() {
                   Search
                 </h3>
                 <p>Find your notes quickly with full-text search.</p>
-                <button className="card-action-button">
+                <button className="card-action-button" onClick={handleViewNotes}>
                   <span className="icon icon-search"></span>
                   Search Notes
                 </button>
@@ -273,6 +305,26 @@ function App() {
               </div>
             </div>
           </div>
+        ) : null;
+
+      case 'create-note':
+        return vaultLocation && sessionId ? (
+          <CreateNote
+            vaultPath={vaultLocation}
+            sessionId={sessionId}
+            onNoteCreated={handleNoteCreated}
+            onCancel={handleCancelCreateNote}
+          />
+        ) : null;
+
+      case 'notes-list':
+        return vaultLocation && sessionId ? (
+          <NotesList
+            vaultPath={vaultLocation}
+            sessionId={sessionId}
+            onCreateNote={handleCreateNote}
+            onSelectNote={handleSelectNote}
+          />
         ) : null;
       
       case 'home':
@@ -354,7 +406,7 @@ function App() {
   };
 
   // For setup views, use simple container layout
-  if (['vault-setup', 'password-setup', 'vault-unlock', 'home'].includes(currentView)) {
+  if (['vault-setup', 'password-setup', 'vault-unlock', 'home', 'create-note'].includes(currentView)) {
     return (
       <ThemeProvider>
         <div className="container">

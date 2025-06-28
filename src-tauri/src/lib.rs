@@ -8,7 +8,7 @@ mod vault;
 
 use config::{AppConfig, ConfigError};
 use crypto::{CryptoError, CryptoManager, PasswordStrength, SecurePassword};
-use vault::{VaultManager, VaultInfo, VaultError};
+use vault::{VaultManager, VaultInfo, VaultError, Note, NoteMetadata};
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -70,6 +70,21 @@ pub struct VaultUnlockResult {
 pub struct RateLimitInfo {
     pub is_rate_limited: bool,
     pub seconds_remaining: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CreateNoteRequest {
+    pub title: String,
+    pub content: Option<String>,
+    pub tags: Option<Vec<String>>,
+    pub folder_path: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CreateNoteResult {
+    pub success: bool,
+    pub note: Option<Note>,
+    pub error_message: Option<String>,
 }
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -281,6 +296,65 @@ async fn check_session_status(session_id: String) -> Result<bool, AppError> {
     Ok(VaultManager::get_session(&session_id).is_some())
 }
 
+// Note management commands
+
+#[tauri::command]
+async fn create_note(
+    vault_path: String,
+    session_id: String,
+    title: String,
+    content: Option<String>,
+    tags: Option<Vec<String>>,
+    folder_path: Option<String>
+) -> Result<CreateNoteResult, AppError> {
+    let path_buf = std::path::PathBuf::from(&vault_path);
+    let vault_manager = VaultManager::new(&path_buf);
+    
+    match vault_manager.create_note(&session_id, title, content, tags, folder_path) {
+        Ok(note) => Ok(CreateNoteResult {
+            success: true,
+            note: Some(note),
+            error_message: None,
+        }),
+        Err(vault_error) => {
+            let error_message = match &vault_error {
+                VaultError::InvalidNoteTitle(msg) => msg.clone(),
+                VaultError::InvalidPassword => "Session expired. Please unlock vault again.".to_string(),
+                _ => "Failed to create note.".to_string(),
+            };
+            
+            Ok(CreateNoteResult {
+                success: false,
+                note: None,
+                error_message: Some(error_message),
+            })
+        }
+    }
+}
+
+#[tauri::command]
+async fn get_notes_list(
+    vault_path: String,
+    session_id: String
+) -> Result<Vec<NoteMetadata>, AppError> {
+    let path_buf = std::path::PathBuf::from(&vault_path);
+    let vault_manager = VaultManager::new(&path_buf);
+    
+    Ok(vault_manager.get_notes_list(&session_id)?)
+}
+
+#[tauri::command]
+async fn load_note(
+    vault_path: String,
+    session_id: String,
+    note_id: String
+) -> Result<Note, AppError> {
+    let path_buf = std::path::PathBuf::from(&vault_path);
+    let vault_manager = VaultManager::new(&path_buf);
+    
+    Ok(vault_manager.load_note(&session_id, &note_id)?)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -302,7 +376,10 @@ pub fn run() {
             get_vault_rate_limit_status,
             unlock_vault,
             close_vault_session,
-            check_session_status
+            check_session_status,
+            create_note,
+            get_notes_list,
+            load_note
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

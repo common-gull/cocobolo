@@ -24,6 +24,10 @@ pub enum VaultError {
     RateLimited(u64),
     #[error("Vault is corrupted or invalid")]
     VaultCorrupted,
+    #[error("Note not found: {0}")]
+    NoteNotFound(String),
+    #[error("Invalid note title: {0}")]
+    InvalidNoteTitle(String),
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
     #[error("Serialization error: {0}")]
@@ -60,6 +64,109 @@ impl VaultInfo {
             is_encrypted: true,
             crypto: Some(crypto),
         }
+    }
+}
+
+/// Individual note data
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Note {
+    pub id: String,
+    pub title: String,
+    pub content: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub tags: Vec<String>,
+    pub folder_path: Option<String>,
+}
+
+impl Note {
+    pub fn new(title: String, content: Option<String>) -> Self {
+        let now = chrono::Utc::now();
+        Self {
+            id: uuid::Uuid::new_v4().to_string(),
+            title,
+            content: content.unwrap_or_default(),
+            created_at: now,
+            updated_at: now,
+            tags: Vec::new(),
+            folder_path: None,
+        }
+    }
+
+    pub fn with_tags(mut self, tags: Vec<String>) -> Self {
+        self.tags = tags;
+        self
+    }
+
+    pub fn with_folder(mut self, folder_path: Option<String>) -> Self {
+        self.folder_path = folder_path;
+        self
+    }
+}
+
+/// Note metadata for the index
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct NoteMetadata {
+    pub id: String,
+    pub title: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub tags: Vec<String>,
+    pub folder_path: Option<String>,
+    pub content_preview: String,
+}
+
+impl From<&Note> for NoteMetadata {
+    fn from(note: &Note) -> Self {
+        let content_preview = if note.content.len() > 100 {
+            format!("{}...", &note.content[..97])
+        } else {
+            note.content.clone()
+        };
+
+        Self {
+            id: note.id.clone(),
+            title: note.title.clone(),
+            created_at: note.created_at,
+            updated_at: note.updated_at,
+            tags: note.tags.clone(),
+            folder_path: note.folder_path.clone(),
+            content_preview,
+        }
+    }
+}
+
+/// Notes index containing metadata for all notes
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct NotesIndex {
+    pub notes: Vec<NoteMetadata>,
+    pub last_updated: chrono::DateTime<chrono::Utc>,
+}
+
+impl NotesIndex {
+    pub fn new() -> Self {
+        Self {
+            notes: Vec::new(),
+            last_updated: chrono::Utc::now(),
+        }
+    }
+
+    pub fn add_note(&mut self, note: &Note) {
+        let metadata = NoteMetadata::from(note);
+        self.notes.push(metadata);
+        self.last_updated = chrono::Utc::now();
+    }
+
+    pub fn update_note(&mut self, note: &Note) {
+        if let Some(existing) = self.notes.iter_mut().find(|n| n.id == note.id) {
+            *existing = NoteMetadata::from(note);
+            self.last_updated = chrono::Utc::now();
+        }
+    }
+
+    pub fn remove_note(&mut self, note_id: &str) {
+        self.notes.retain(|n| n.id != note_id);
+        self.last_updated = chrono::Utc::now();
     }
 }
 
@@ -414,5 +521,183 @@ impl VaultManager {
     /// Get the crypto manager for password validation
     pub fn crypto_manager(&self) -> &CryptoManager {
         &self.crypto_manager
+    }
+
+    /// Create a new note in the vault
+    pub fn create_note(&self, session_id: &str, title: String, content: Option<String>, tags: Option<Vec<String>>, folder_path: Option<String>) -> Result<Note, VaultError> {
+        // Validate title
+        let title = title.trim().to_string();
+        if title.is_empty() {
+            return Err(VaultError::InvalidNoteTitle("Title cannot be empty".to_string()));
+        }
+        if title.len() > 200 {
+            return Err(VaultError::InvalidNoteTitle("Title cannot exceed 200 characters".to_string()));
+        }
+
+        // Get session to ensure vault is unlocked
+        let session = Self::get_session(session_id)
+            .ok_or_else(|| VaultError::InvalidPassword)?; // Session expired or invalid
+
+        // Create note
+        let mut note = Note::new(title, content);
+        if let Some(tags) = tags {
+            note = note.with_tags(tags);
+        }
+        if let Some(folder_path) = folder_path {
+            note = note.with_folder(Some(folder_path));
+        }
+
+        // Encrypt and save note
+        let note_content = serde_json::to_string_pretty(&note)?;
+        let (encrypted_content, nonce) = self.crypto_manager.encrypt_data(
+            note_content.as_bytes(),
+            &session.encryption_key
+        )?;
+
+        // Save encrypted note file
+        let note_filename = format!("{}.note", note.id);
+        let note_file_path = self.vault_path.join("notes").join(&note_filename);
+        
+        // Create note file with metadata
+        let note_file_data = serde_json::json!({
+            "nonce": base64::encode(&nonce),
+            "encrypted_content": base64::encode(&encrypted_content),
+            "created_at": note.created_at,
+            "updated_at": note.updated_at
+        });
+        
+        std::fs::write(&note_file_path, serde_json::to_string_pretty(&note_file_data)?)?;
+
+        // Update notes index
+        self.update_notes_index(&session.encryption_key, |index| {
+            index.add_note(&note);
+        })?;
+
+        Ok(note)
+    }
+
+    /// Load notes index from vault
+    pub fn load_notes_index(&self, encryption_key: &EncryptionKey) -> Result<NotesIndex, VaultError> {
+        let index_file = self.vault_path.join(".cocobolo_notes_index");
+        
+        if !index_file.exists() {
+            // Create new index if it doesn't exist
+            let index = NotesIndex::new();
+            self.save_notes_index(&index, encryption_key)?;
+            return Ok(index);
+        }
+
+        // Read and decrypt index
+        let index_data: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(&index_file)?
+        )?;
+
+        let nonce_b64 = index_data["nonce"].as_str()
+            .ok_or_else(|| VaultError::VaultCorrupted)?;
+        let encrypted_content_b64 = index_data["encrypted_content"].as_str()
+            .ok_or_else(|| VaultError::VaultCorrupted)?;
+
+        let nonce = base64::decode(nonce_b64)
+            .map_err(|_| VaultError::VaultCorrupted)?;
+        let encrypted_content = base64::decode(encrypted_content_b64)
+            .map_err(|_| VaultError::VaultCorrupted)?;
+
+        let decrypted_content = self.crypto_manager.decrypt_data(
+            &encrypted_content,
+            &nonce,
+            encryption_key
+        )?;
+
+        let index: NotesIndex = serde_json::from_slice(&decrypted_content)?;
+        Ok(index)
+    }
+
+    /// Save notes index to vault
+    fn save_notes_index(&self, index: &NotesIndex, encryption_key: &EncryptionKey) -> Result<(), VaultError> {
+        let index_content = serde_json::to_string_pretty(index)?;
+        let (encrypted_content, nonce) = self.crypto_manager.encrypt_data(
+            index_content.as_bytes(),
+            encryption_key
+        )?;
+
+        let index_file_data = serde_json::json!({
+            "nonce": base64::encode(&nonce),
+            "encrypted_content": base64::encode(&encrypted_content),
+            "last_updated": index.last_updated
+        });
+
+        let index_file = self.vault_path.join(".cocobolo_notes_index");
+        std::fs::write(&index_file, serde_json::to_string_pretty(&index_file_data)?)?;
+
+        Ok(())
+    }
+
+    /// Update notes index with a closure
+    fn update_notes_index<F>(&self, encryption_key: &EncryptionKey, update_fn: F) -> Result<(), VaultError>
+    where
+        F: FnOnce(&mut NotesIndex),
+    {
+        let mut index = self.load_notes_index(encryption_key)?;
+        update_fn(&mut index);
+        self.save_notes_index(&index, encryption_key)?;
+        Ok(())
+    }
+
+    /// Get all notes metadata
+    pub fn get_notes_list(&self, session_id: &str) -> Result<Vec<NoteMetadata>, VaultError> {
+        let session = Self::get_session(session_id)
+            .ok_or_else(|| VaultError::InvalidPassword)?;
+
+        let index = self.load_notes_index(&session.encryption_key)?;
+        Ok(index.notes)
+    }
+
+    /// Load a specific note by ID
+    pub fn load_note(&self, session_id: &str, note_id: &str) -> Result<Note, VaultError> {
+        let session = Self::get_session(session_id)
+            .ok_or_else(|| VaultError::InvalidPassword)?;
+
+        let note_filename = format!("{}.note", note_id);
+        let note_file_path = self.vault_path.join("notes").join(&note_filename);
+
+        if !note_file_path.exists() {
+            return Err(VaultError::NoteNotFound(note_id.to_string()));
+        }
+
+        // Read and decrypt note
+        let note_data: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(&note_file_path)?
+        )?;
+
+        let nonce_b64 = note_data["nonce"].as_str()
+            .ok_or_else(|| VaultError::VaultCorrupted)?;
+        let encrypted_content_b64 = note_data["encrypted_content"].as_str()
+            .ok_or_else(|| VaultError::VaultCorrupted)?;
+
+        let nonce = base64::decode(nonce_b64)
+            .map_err(|_| VaultError::VaultCorrupted)?;
+        let encrypted_content = base64::decode(encrypted_content_b64)
+            .map_err(|_| VaultError::VaultCorrupted)?;
+
+        let decrypted_content = self.crypto_manager.decrypt_data(
+            &encrypted_content,
+            &nonce,
+            &session.encryption_key
+        )?;
+
+        let note: Note = serde_json::from_slice(&decrypted_content)?;
+        Ok(note)
+    }
+}
+
+mod base64 {
+    use base64::{engine::general_purpose, Engine as _};
+
+    pub fn encode<T: AsRef<[u8]>>(input: T) -> String {
+        general_purpose::STANDARD.encode(input)
+    }
+
+    pub fn decode<T: AsRef<[u8]>>(input: T) -> Result<Vec<u8>, base64::DecodeError> {
+        general_purpose::STANDARD.decode(input)
     }
 } 

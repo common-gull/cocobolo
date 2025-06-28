@@ -8,7 +8,11 @@ import type {
   VaultSetupInfo, 
   VaultInfo,
   VaultUnlockResult,
-  RateLimitInfo
+  RateLimitInfo,
+  Note,
+  NoteMetadata,
+  CreateNoteRequest,
+  CreateNoteResult
 } from '../types';
 
 export class ApiError extends Error {
@@ -153,6 +157,42 @@ export const api = {
       return await invoke<boolean>('check_session_status', { sessionId });
     } catch (error) {
       throw new ApiError('Failed to check session status', error);
+    }
+  },
+
+  // Note management
+  async createNote(
+    vaultPath: string, 
+    sessionId: string, 
+    request: CreateNoteRequest
+  ): Promise<CreateNoteResult> {
+    try {
+      return await invoke<CreateNoteResult>('create_note', { 
+        vaultPath,
+        sessionId,
+        title: request.title,
+        content: request.content,
+        tags: request.tags,
+        folderPath: request.folder_path
+      });
+    } catch (error) {
+      throw new ApiError('Failed to create note', error);
+    }
+  },
+
+  async getNotesList(vaultPath: string, sessionId: string): Promise<NoteMetadata[]> {
+    try {
+      return await invoke<NoteMetadata[]>('get_notes_list', { vaultPath, sessionId });
+    } catch (error) {
+      throw new ApiError('Failed to get notes list', error);
+    }
+  },
+
+  async loadNote(vaultPath: string, sessionId: string, noteId: string): Promise<Note> {
+    try {
+      return await invoke<Note>('load_note', { vaultPath, sessionId, noteId });
+    } catch (error) {
+      throw new ApiError('Failed to load note', error);
     }
   },
 }; 
