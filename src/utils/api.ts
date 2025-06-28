@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-import type { AppInfo, VaultLocationInfo, AppConfig } from '../types';
+import type { AppInfo, VaultLocationInfo, AppConfig, PasswordStrength, VaultSetupInfo, VaultInfo } from '../types';
 
 export class ApiError extends Error {
   public override cause?: unknown;
@@ -66,6 +66,43 @@ export const api = {
       return await invoke<AppConfig>('get_app_config');
     } catch (error) {
       throw new ApiError('Failed to get app config', error);
+    }
+  },
+
+  // Password and encryption management
+  async validatePasswordStrength(password: string): Promise<PasswordStrength> {
+    try {
+      return await invoke<PasswordStrength>('validate_password_strength', { password });
+    } catch (error) {
+      throw new ApiError('Failed to validate password strength', error);
+    }
+  },
+
+  async checkVaultSetupStatus(path: string): Promise<VaultSetupInfo> {
+    try {
+      return await invoke<VaultSetupInfo>('check_vault_setup_status', { path });
+    } catch (error) {
+      throw new ApiError('Failed to check vault setup status', error);
+    }
+  },
+
+  async createEncryptedVault(path: string, vaultName: string, password: string): Promise<VaultInfo> {
+    try {
+      return await invoke<VaultInfo>('create_encrypted_vault', { 
+        path, 
+        vaultName, 
+        password 
+      });
+    } catch (error) {
+      throw new ApiError('Failed to create encrypted vault', error);
+    }
+  },
+
+  async verifyVaultPassword(path: string, password: string): Promise<boolean> {
+    try {
+      return await invoke<boolean>('verify_vault_password', { path, password });
+    } catch (error) {
+      throw new ApiError('Failed to verify vault password', error);
     }
   },
 

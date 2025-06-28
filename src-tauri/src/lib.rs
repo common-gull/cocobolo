@@ -3,9 +3,11 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 mod config;
+mod crypto;
 mod vault;
 
 use config::{AppConfig, ConfigError};
+use crypto::{CryptoError, CryptoManager, PasswordStrength, SecurePassword};
 use vault::{VaultManager, VaultInfo, VaultError};
 
 #[derive(Error, Debug)]
@@ -18,6 +20,8 @@ pub enum AppError {
     Config(#[from] ConfigError),
     #[error("Vault error: {0}")]
     Vault(#[from] VaultError),
+    #[error("Cryptographic error: {0}")]
+    Crypto(#[from] CryptoError),
     #[error("Application error: {0}")]
     Application(String),
 }
@@ -44,6 +48,13 @@ pub struct VaultLocationInfo {
     pub is_valid: bool,
     pub is_writable: bool,
     pub has_existing_vault: bool,
+    pub vault_info: Option<VaultInfo>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct VaultSetupInfo {
+    pub needs_password: bool,
+    pub is_encrypted: bool,
     pub vault_info: Option<VaultInfo>,
 }
 
@@ -141,6 +152,57 @@ async fn get_app_config() -> Result<AppConfig, AppError> {
     Ok(config)
 }
 
+// Password and encryption related commands
+
+#[tauri::command]
+async fn validate_password_strength(password: String) -> Result<PasswordStrength, AppError> {
+    let crypto_manager = CryptoManager::new();
+    let secure_password = SecurePassword::new(password);
+    Ok(crypto_manager.validate_password_strength(&secure_password))
+}
+
+#[tauri::command]
+async fn check_vault_setup_status(path: String) -> Result<VaultSetupInfo, AppError> {
+    let path_buf = std::path::PathBuf::from(&path);
+    let vault_manager = VaultManager::new(&path_buf);
+    
+    if !vault_manager.vault_exists() {
+        return Ok(VaultSetupInfo {
+            needs_password: true,
+            is_encrypted: false,
+            vault_info: None,
+        });
+    }
+
+    let vault_info = vault_manager.load_vault_info()?;
+    let is_encrypted = vault_info.is_encrypted;
+    
+    Ok(VaultSetupInfo {
+        needs_password: is_encrypted,
+        is_encrypted,
+        vault_info: Some(vault_info),
+    })
+}
+
+#[tauri::command]
+async fn create_encrypted_vault(path: String, vault_name: String, password: String) -> Result<VaultInfo, AppError> {
+    let path_buf = std::path::PathBuf::from(&path);
+    let vault_manager = VaultManager::new(&path_buf);
+    let secure_password = SecurePassword::new(password);
+    
+    let vault_info = vault_manager.initialize_encrypted_vault(vault_name, &secure_password)?;
+    Ok(vault_info)
+}
+
+#[tauri::command]
+async fn verify_vault_password(path: String, password: String) -> Result<bool, AppError> {
+    let path_buf = std::path::PathBuf::from(&path);
+    let vault_manager = VaultManager::new(&path_buf);
+    let secure_password = SecurePassword::new(password);
+    
+    Ok(vault_manager.verify_vault_password(&secure_password)?)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -154,7 +216,11 @@ pub fn run() {
             validate_vault_location,
             set_vault_location,
             get_current_vault_location,
-            get_app_config
+            get_app_config,
+            validate_password_strength,
+            check_vault_setup_status,
+            create_encrypted_vault,
+            verify_vault_password
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

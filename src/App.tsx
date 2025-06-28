@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
 import { api } from './utils/api';
 import { VaultLocationSelector } from './components/VaultLocationSelector';
-import type { AppInfo } from './types';
+import { VaultPasswordSetup } from './components/VaultPasswordSetup';
+import type { AppInfo, VaultInfo, VaultSetupInfo } from './types';
 import "./App.css";
 
-type AppView = 'home' | 'vault-setup';
+type AppView = 'home' | 'vault-setup' | 'password-setup';
 
 function App() {
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [vaultLocation, setVaultLocation] = useState<string | null>(null);
+  const [vaultSetupInfo, setVaultSetupInfo] = useState<VaultSetupInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,8 +31,22 @@ function App() {
         setAppInfo(info);
         setVaultLocation(location);
         
-        // If no vault location is set, show vault setup
-        if (!location) {
+        if (location) {
+          // Check vault setup status
+          const setupInfo = await api.checkVaultSetupStatus(location);
+          setVaultSetupInfo(setupInfo);
+          
+          if (setupInfo.needs_password && !setupInfo.vault_info) {
+            // New vault needs password setup
+            setCurrentView('password-setup');
+          } else if (setupInfo.needs_password && setupInfo.vault_info) {
+            // Existing encrypted vault - would need password entry (future story)
+            setCurrentView('home');
+          } else {
+            setCurrentView('home');
+          }
+        } else {
+          // No vault location set
           setCurrentView('vault-setup');
         }
       } catch (err) {
@@ -56,9 +72,36 @@ function App() {
     }
   };
 
-  const handleVaultLocationSet = (path: string) => {
+  const handleVaultLocationSet = async (path: string) => {
     setVaultLocation(path);
+    
+    try {
+      // Check if this location needs password setup
+      const setupInfo = await api.checkVaultSetupStatus(path);
+      setVaultSetupInfo(setupInfo);
+      
+      if (setupInfo.needs_password && !setupInfo.vault_info) {
+        // New vault needs password setup
+        setCurrentView('password-setup');
+      } else {
+        setCurrentView('home');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to check vault setup');
+    }
+  };
+
+  const handleVaultCreated = (vaultInfo: VaultInfo) => {
+    setVaultSetupInfo({
+      needs_password: false,
+      is_encrypted: true,
+      vault_info: vaultInfo,
+    });
     setCurrentView('home');
+  };
+
+  const handlePasswordSetupCancel = () => {
+    setCurrentView('vault-setup');
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -95,6 +138,12 @@ function App() {
 
       {currentView === 'vault-setup' ? (
         <VaultLocationSelector onLocationSet={handleVaultLocationSet} />
+      ) : currentView === 'password-setup' && vaultLocation ? (
+        <VaultPasswordSetup 
+          vaultPath={vaultLocation}
+          onVaultCreated={handleVaultCreated}
+          onCancel={handlePasswordSetupCancel}
+        />
       ) : (
         <>
           <section className="welcome-section">
@@ -102,6 +151,19 @@ function App() {
             <p>
               Your vault is located at: <code>{vaultLocation}</code>
             </p>
+            {vaultSetupInfo?.vault_info && (
+              <div className="vault-info">
+                <p>
+                  <strong>Vault:</strong> {vaultSetupInfo.vault_info.name}
+                  {vaultSetupInfo.is_encrypted && (
+                    <span className="encryption-badge">🔒 Encrypted</span>
+                  )}
+                </p>
+                <p>
+                  <strong>Created:</strong> {new Date(vaultSetupInfo.vault_info.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            )}
             <p>
               Cocobolo keeps your notes encrypted and secure. All your data is stored locally
               and encrypted with your password.
@@ -157,6 +219,24 @@ function App() {
               >
                 Change Vault Location
               </button>
+              
+              {vaultLocation && vaultSetupInfo?.is_encrypted && (
+                <button 
+                  className="greet-form button"
+                  onClick={() => setCurrentView('password-setup')}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: 'var(--info-color)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  Setup New Password
+                </button>
+              )}
             </div>
           </section>
         </>
