@@ -62,7 +62,7 @@ interface IconProps {
 }
 
 // Helper function to get size value
-const getSize = (size: IconSize | number = 'md'): number => {
+const getSize = (size: IconSize | number): number => {
   return typeof size === 'number' ? size : IconSizes[size];
 };
 
@@ -71,9 +71,9 @@ const createIcon = (TablerComponent: React.ComponentType<TablerIconsProps>) =>
   ({ size = 'md', className = '', color = 'currentColor', stroke = 1.5, ...props }: IconProps & TablerIconsProps) => (
     <TablerComponent
       size={getSize(size)}
+      className={className}
       color={color}
       stroke={stroke}
-      className={className}
       {...props}
     />
   );
@@ -118,60 +118,4 @@ export const Icons = {
   lightbulb: createIcon(IconBulb),
 } as const;
 
-// Legacy icon mapping for easier migration
-export const LegacyIconMap = {
-  'icon-menu': Icons.menu,
-  'icon-home': Icons.home,
-  'icon-plus': Icons.plus,
-  'icon-search': Icons.search,
-  'icon-x': Icons.x,
-  'icon-chevron-right': Icons.chevronRight,
-  'icon-file': Icons.file,
-  'icon-folder': Icons.folder,
-  'icon-lock': Icons.lock,
-  'icon-eye': Icons.eye,
-  'icon-eye-slash': Icons.eyeOff,
-  'icon-check': Icons.check,
-  'icon-warning': Icons.warning,
-  'icon-info': Icons.info,
-  'icon-clock': Icons.clock,
-  'icon-refresh': Icons.refresh,
-  'icon-sun': Icons.sun,
-  'icon-moon': Icons.moon,
-  'icon-monitor': Icons.monitor,
-  'icon-keyboard': Icons.keyboard,
-  'icon-logout': Icons.logout,
-  'icon-lightbulb': Icons.lightbulb,
-} as const;
-
-// Legacy Icon component for gradual migration
-interface LegacyIconProps extends IconProps {
-  name: keyof typeof LegacyIconMap;
-}
-
-export const LegacyIcon: React.FC<LegacyIconProps> = ({ name, ...props }) => {
-  const IconComponent = LegacyIconMap[name];
-  return IconComponent ? <IconComponent {...props} /> : null;
-};
-
-// Icon wrapper component that accepts both new and legacy formats
-interface IconWrapperProps extends IconProps {
-  icon?: keyof typeof Icons;
-  legacy?: keyof typeof LegacyIconMap;
-}
-
-export const Icon: React.FC<IconWrapperProps> = ({ icon, legacy, ...props }) => {
-  if (icon && Icons[icon]) {
-    const IconComponent = Icons[icon];
-    return <IconComponent {...props} />;
-  }
-  
-  if (legacy && LegacyIconMap[legacy]) {
-    const IconComponent = LegacyIconMap[legacy];
-    return <IconComponent {...props} />;
-  }
-  
-  return null;
-};
-
-export default Icons; 
+export type IconName = keyof typeof Icons; 
