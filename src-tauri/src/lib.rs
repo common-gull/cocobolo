@@ -87,6 +87,22 @@ pub struct CreateNoteResult {
     pub error_message: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SaveNoteRequest {
+    pub id: String,
+    pub title: Option<String>,
+    pub content: Option<String>,
+    pub tags: Option<Vec<String>>,
+    pub folder_path: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SaveNoteResult {
+    pub success: bool,
+    pub note: Option<Note>,
+    pub error_message: Option<String>,
+}
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn get_app_info() -> Result<AppInfo, AppError> {
@@ -355,6 +371,42 @@ async fn load_note(
     Ok(vault_manager.load_note(&session_id, &note_id)?)
 }
 
+#[tauri::command]
+async fn save_note(
+    vault_path: String,
+    session_id: String,
+    note_id: String,
+    title: Option<String>,
+    content: Option<String>,
+    tags: Option<Vec<String>>,
+    folder_path: Option<String>
+) -> Result<SaveNoteResult, AppError> {
+    let path_buf = std::path::PathBuf::from(&vault_path);
+    let vault_manager = VaultManager::new(&path_buf);
+    
+    match vault_manager.save_note(&session_id, &note_id, title, content, tags, folder_path) {
+        Ok(note) => Ok(SaveNoteResult {
+            success: true,
+            note: Some(note),
+            error_message: None,
+        }),
+        Err(vault_error) => {
+            let error_message = match &vault_error {
+                VaultError::NoteNotFound(_) => "Note not found.".to_string(),
+                VaultError::InvalidNoteTitle(msg) => msg.clone(),
+                VaultError::InvalidPassword => "Session expired. Please unlock vault again.".to_string(),
+                _ => "Failed to save note.".to_string(),
+            };
+            
+            Ok(SaveNoteResult {
+                success: false,
+                note: None,
+                error_message: Some(error_message),
+            })
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -379,7 +431,8 @@ pub fn run() {
             check_session_status,
             create_note,
             get_notes_list,
-            load_note
+            load_note,
+            save_note
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

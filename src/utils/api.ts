@@ -11,8 +11,8 @@ import type {
   RateLimitInfo,
   Note,
   NoteMetadata,
-  CreateNoteRequest,
-  CreateNoteResult
+  CreateNoteResult,
+  SaveNoteResult
 } from '../types';
 
 export class ApiError extends Error {
@@ -162,37 +162,78 @@ export const api = {
 
   // Note management
   async createNote(
-    vaultPath: string, 
-    sessionId: string, 
-    request: CreateNoteRequest
+    vaultPath: string,
+    sessionId: string,
+    title: string,
+    content?: string,
+    tags?: string[],
+    folderPath?: string
   ): Promise<CreateNoteResult> {
     try {
-      return await invoke<CreateNoteResult>('create_note', { 
+      return await invoke<CreateNoteResult>('create_note', {
         vaultPath,
         sessionId,
-        title: request.title,
-        content: request.content,
-        tags: request.tags,
-        folderPath: request.folder_path
+        title,
+        content,
+        tags,
+        folderPath
       });
     } catch (error) {
       throw new ApiError('Failed to create note', error);
     }
   },
 
-  async getNotesList(vaultPath: string, sessionId: string): Promise<NoteMetadata[]> {
+  async getNotesList(
+    vaultPath: string,
+    sessionId: string
+  ): Promise<NoteMetadata[]> {
     try {
-      return await invoke<NoteMetadata[]>('get_notes_list', { vaultPath, sessionId });
+      return await invoke<NoteMetadata[]>('get_notes_list', {
+        vaultPath,
+        sessionId
+      });
     } catch (error) {
       throw new ApiError('Failed to get notes list', error);
     }
   },
 
-  async loadNote(vaultPath: string, sessionId: string, noteId: string): Promise<Note> {
+  async loadNote(
+    vaultPath: string,
+    sessionId: string,
+    noteId: string
+  ): Promise<Note> {
     try {
-      return await invoke<Note>('load_note', { vaultPath, sessionId, noteId });
+      return await invoke<Note>('load_note', {
+        vaultPath,
+        sessionId,
+        noteId
+      });
     } catch (error) {
       throw new ApiError('Failed to load note', error);
+    }
+  },
+
+  async saveNote(
+    vaultPath: string,
+    sessionId: string,
+    noteId: string,
+    title?: string,
+    content?: string,
+    tags?: string[],
+    folderPath?: string
+  ): Promise<SaveNoteResult> {
+    try {
+      return await invoke<SaveNoteResult>('save_note', {
+        vaultPath,
+        sessionId,
+        noteId,
+        title,
+        content,
+        tags,
+        folderPath
+      });
+    } catch (error) {
+      throw new ApiError('Failed to save note', error);
     }
   },
 }; 

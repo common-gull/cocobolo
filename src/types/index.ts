@@ -94,7 +94,7 @@ export interface VaultUnlockState {
   rateLimitInfo: RateLimitInfo | null;
 }
 
-export type AppView = 'home' | 'vault-setup' | 'password-setup' | 'vault-unlock' | 'main-app' | 'create-note' | 'notes-list';
+export type AppView = 'home' | 'vault-setup' | 'password-setup' | 'vault-unlock' | 'main-app' | 'create-note' | 'notes-list' | 'edit-note';
 
 // Note-related types
 export interface Note {
@@ -117,13 +117,6 @@ export interface NoteMetadata {
   content_preview: string; // First 100 chars of content
 }
 
-export interface CreateNoteRequest {
-  title: string;
-  content?: string;
-  tags?: string[];
-  folder_path?: string;
-}
-
 export interface CreateNoteResult {
   success: boolean;
   note?: Note;
@@ -133,4 +126,29 @@ export interface CreateNoteResult {
 export interface NotesIndex {
   notes: NoteMetadata[];
   last_updated: string;
+}
+
+// Markdown Editor types
+export interface EditorState {
+  content: string;
+  isDirty: boolean;
+  isSaving: boolean;
+  lastSaved: Date | null;
+  saveError: string | null;
+}
+
+export interface EditorSettings {
+  theme: 'light' | 'dark' | 'auto';
+  showPreview: boolean;
+  enableVim: boolean;
+  fontSize: number;
+  tabSize: number;
+  autoSave: boolean;
+  autoSaveInterval: number; // in milliseconds
+}
+
+export interface SaveNoteResult {
+  success: boolean;
+  note?: Note;
+  error_message?: string;
 } 

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { api } from '../utils/api';
-import type { CreateNoteRequest, CreateNoteResult } from '../types';
+import type { CreateNoteResult } from '../types';
 import './CreateNote.css';
 
 interface CreateNoteProps {
@@ -59,16 +59,21 @@ export function CreateNote({ vaultPath, sessionId, onNoteCreated, onCancel }: Cr
     try {
       setState(prev => ({ ...prev, isCreating: true, error: null }));
 
-      const request: CreateNoteRequest = {
-        title: state.title.trim(),
-        ...(state.content.trim() && { content: state.content.trim() }),
-        ...(state.tags.trim() && { 
-          tags: state.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
-        }),
-        ...(state.folderPath.trim() && { folder_path: state.folderPath.trim() }),
-      };
+      const title = state.title.trim();
+      const content = state.content.trim() || undefined;
+      const tags = state.tags.trim() 
+        ? state.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+        : undefined;
+      const folderPath = state.folderPath.trim() || undefined;
 
-      const result: CreateNoteResult = await api.createNote(vaultPath, sessionId, request);
+      const result: CreateNoteResult = await api.createNote(
+        vaultPath, 
+        sessionId, 
+        title,
+        content,
+        tags,
+        folderPath
+      );
 
       if (result.success && result.note) {
         setState(prev => ({ ...prev, isCreating: false }));

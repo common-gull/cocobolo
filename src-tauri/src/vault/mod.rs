@@ -688,6 +688,78 @@ impl VaultManager {
         let note: Note = serde_json::from_slice(&decrypted_content)?;
         Ok(note)
     }
+
+    /// Save changes to an existing note
+    pub fn save_note(
+        &self, 
+        session_id: &str, 
+        note_id: &str, 
+        title: Option<String>, 
+        content: Option<String>, 
+        tags: Option<Vec<String>>, 
+        folder_path: Option<String>
+    ) -> Result<Note, VaultError> {
+        let session = Self::get_session(session_id)
+            .ok_or_else(|| VaultError::InvalidPassword)?;
+
+        // Load existing note
+        let mut note = self.load_note(session_id, note_id)?;
+
+        // Update fields if provided
+        if let Some(title) = title {
+            let title = title.trim().to_string();
+            if title.is_empty() {
+                return Err(VaultError::InvalidNoteTitle("Title cannot be empty".to_string()));
+            }
+            if title.len() > 200 {
+                return Err(VaultError::InvalidNoteTitle("Title cannot exceed 200 characters".to_string()));
+            }
+            note.title = title;
+        }
+
+        if let Some(content) = content {
+            note.content = content;
+        }
+
+        if let Some(tags) = tags {
+            note.tags = tags;
+        }
+
+        if let Some(folder_path) = folder_path {
+            note.folder_path = Some(folder_path);
+        }
+
+        // Update timestamp
+        note.updated_at = chrono::Utc::now();
+
+        // Encrypt and save note
+        let note_content = serde_json::to_string_pretty(&note)?;
+        let (encrypted_content, nonce) = self.crypto_manager.encrypt_data(
+            note_content.as_bytes(),
+            &session.encryption_key
+        )?;
+
+        // Save encrypted note file
+        let note_filename = format!("{}.note", note.id);
+        let note_file_path = self.vault_path.join("notes").join(&note_filename);
+        
+        // Create note file with metadata
+        let note_file_data = serde_json::json!({
+            "nonce": base64::encode(&nonce),
+            "encrypted_content": base64::encode(&encrypted_content),
+            "created_at": note.created_at,
+            "updated_at": note.updated_at
+        });
+        
+        std::fs::write(&note_file_path, serde_json::to_string_pretty(&note_file_data)?)?;
+
+        // Update notes index
+        self.update_notes_index(&session.encryption_key, |index| {
+            index.update_note(&note);
+        })?;
+
+        Ok(note)
+    }
 }
 
 mod base64 {

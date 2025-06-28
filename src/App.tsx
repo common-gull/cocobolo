@@ -5,9 +5,10 @@ import { VaultPasswordSetup } from './components/VaultPasswordSetup';
 import { VaultUnlock } from './components/VaultUnlock';
 import { CreateNote } from './components/CreateNote';
 import { NotesList } from './components/NotesList';
+import { MarkdownEditor } from './components/MarkdownEditor';
 import { MainLayout } from './components/Layout/MainLayout';
-import { ThemeProvider } from './contexts/ThemeContext';
-import type { AppInfo, AppView, VaultSetupInfo, VaultInfo } from './types';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import type { AppInfo, AppView, VaultSetupInfo, VaultInfo, Note } from './types';
 import './App.css';
 
 function App() {
@@ -18,11 +19,28 @@ function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentNote, setCurrentNote] = useState<Note | null>(null);
 
   // Demo state
   const [greetInput, setGreetInput] = useState('');
   const [greetResult, setGreetResult] = useState<string | null>(null);
   const [greetError, setGreetError] = useState<string | null>(null);
+
+  // Component to access theme context
+  const MarkdownEditorWrapper = () => {
+    const { effectiveTheme } = useTheme();
+    
+    return currentNote && vaultLocation && sessionId ? (
+      <MarkdownEditor
+        note={currentNote}
+        vaultPath={vaultLocation}
+        sessionId={sessionId}
+        isDarkMode={effectiveTheme === 'dark'}
+        onClose={handleCloseEditor}
+        onError={handleEditorError}
+      />
+    ) : null;
+  };
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -182,12 +200,29 @@ function App() {
     setCurrentView('notes-list');
   };
 
-  const handleSelectNote = (noteId: string) => {
-    // TODO: Implement note viewing/editing
-    console.log('Selected note:', noteId);
+  const handleSelectNote = async (noteId: string) => {
+    if (!vaultLocation || !sessionId) {
+      setError('Vault not available');
+      return;
+    }
+
+    try {
+      const note = await api.loadNote(vaultLocation, sessionId, noteId);
+      setCurrentNote(note);
+      setCurrentView('edit-note');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load note');
+    }
   };
 
+  const handleCloseEditor = () => {
+    setCurrentNote(null);
+    setCurrentView('notes-list');
+  };
 
+  const handleEditorError = (errorMessage: string) => {
+    setError(errorMessage);
+  };
 
   if (loading) {
     return (
@@ -400,6 +435,9 @@ function App() {
           </div>
         );
       
+      case 'edit-note':
+        return <MarkdownEditorWrapper />;
+      
       default:
         return null;
     }
@@ -431,7 +469,7 @@ function App() {
     );
   }
 
-  // For main app, use full layout
+  // For main app and editor, use full layout
   return (
     <ThemeProvider>
       <MainLayout
