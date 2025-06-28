@@ -1,102 +1,171 @@
 import { useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { api } from './utils/api';
+import { VaultLocationSelector } from './components/VaultLocationSelector';
+import type { AppInfo } from './types';
 import "./App.css";
 
-interface AppInfo {
-  name: string;
-  version: string;
-  description: string;
-}
+type AppView = 'home' | 'vault-setup';
 
 function App() {
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
-  const [error, setError] = useState("");
+  const [currentView, setCurrentView] = useState<AppView>('home');
+  const [vaultLocation, setVaultLocation] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Demo state
+  const [greetInput, setGreetInput] = useState('');
+  const [greetResult, setGreetResult] = useState<string | null>(null);
+  const [greetError, setGreetError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadAppInfo();
+    const loadInitialData = async () => {
+      try {
+        const [info, location] = await Promise.all([
+          api.getAppInfo(),
+          api.getCurrentVaultLocation(),
+        ]);
+        
+        setAppInfo(info);
+        setVaultLocation(location);
+        
+        // If no vault location is set, show vault setup
+        if (!location) {
+          setCurrentView('vault-setup');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load app data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInitialData();
   }, []);
 
-  async function loadAppInfo() {
+  const handleGreet = async () => {
+    if (!greetInput.trim()) return;
+    
     try {
-      setLoading(true);
-      const info = await invoke<AppInfo>("get_app_info");
-      setAppInfo(info);
-      setError("");
+      setGreetError(null);
+      const result = await api.greet(greetInput);
+      setGreetResult(result);
     } catch (err) {
-      setError(`Failed to load app info: ${err}`);
-      console.error("Error loading app info:", err);
-    } finally {
-      setLoading(false);
+      setGreetError(err instanceof Error ? err.message : 'Failed to greet');
+      setGreetResult(null);
     }
-  }
+  };
 
-  async function greet() {
-    try {
-      setError("");
-      const message = await invoke<string>("greet", { name });
-      setGreetMsg(message);
-    } catch (err) {
-      setError(`Greeting failed: ${err}`);
-      setGreetMsg("");
-      console.error("Error greeting:", err);
+  const handleVaultLocationSet = (path: string) => {
+    setVaultLocation(path);
+    setCurrentView('home');
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleGreet();
     }
-  }
+  };
 
   if (loading) {
     return (
-      <main className="container">
-        <div className="loading">Loading...</div>
-      </main>
+      <div className="loading">
+        Loading Cocobolo...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container">
+        <div className="error-message">
+          {error}
+        </div>
+      </div>
     );
   }
 
   return (
-    <main className="container">
+    <div className="container">
       <header className="app-header">
-        <h1>{appInfo?.name || "Cocobolo"}</h1>
+        <h1>{appInfo?.name || 'Cocobolo'}</h1>
         <p className="app-description">{appInfo?.description}</p>
-        <p className="app-version">Version: {appInfo?.version}</p>
+        <p className="app-version">Version {appInfo?.version}</p>
       </header>
 
-      <section className="welcome-section">
-        <h2>Welcome to Your Secure Note-Taking Application</h2>
-        <p>
-          This is the foundation of your encrypted, cross-platform note-taking experience.
-          Built with security and privacy in mind.
-        </p>
-      </section>
+      {currentView === 'vault-setup' ? (
+        <VaultLocationSelector onLocationSet={handleVaultLocationSet} />
+      ) : (
+        <>
+          <section className="welcome-section">
+            <h2>Welcome to Your Secure Notes</h2>
+            <p>
+              Your vault is located at: <code>{vaultLocation}</code>
+            </p>
+            <p>
+              Cocobolo keeps your notes encrypted and secure. All your data is stored locally
+              and encrypted with your password.
+            </p>
+          </section>
 
-      <section className="demo-section">
-        <h3>Test the Backend Connection</h3>
-        <form
-          className="greet-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            greet();
-          }}
-        >
-          <input
-            id="greet-input"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.currentTarget.value)}
-            placeholder="Enter your name..."
-            required
-          />
-          <button type="submit">Say Hello</button>
-        </form>
-        
-        {error && <div className="error-message">{error}</div>}
-        {greetMsg && <div className="success-message">{greetMsg}</div>}
-      </section>
+          <section className="demo-section">
+            <h3>Test Connection</h3>
+            <p>Test the connection between the frontend and backend:</p>
+            
+            <div className="greet-form">
+              <input
+                type="text"
+                value={greetInput}
+                onChange={(e) => setGreetInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Enter your name"
+              />
+              <button onClick={handleGreet}>
+                Greet
+              </button>
+            </div>
+
+            {greetResult && (
+              <div className="success-message">
+                {greetResult}
+              </div>
+            )}
+
+            {greetError && (
+              <div className="error-message">
+                {greetError}
+              </div>
+            )}
+          </section>
+
+          <section className="demo-section">
+            <h3>Navigation</h3>
+            <p>Quick access to application features:</p>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <button 
+                className="greet-form button"
+                onClick={() => setCurrentView('vault-setup')}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'var(--accent-color)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Change Vault Location
+              </button>
+            </div>
+          </section>
+        </>
+      )}
 
       <footer className="app-footer">
-        <p>🔒 Security First • 🚀 Cross-Platform • 📝 Markdown Support</p>
+        <p>Secure • Private • Encrypted</p>
       </footer>
-    </main>
+    </div>
   );
 }
 
