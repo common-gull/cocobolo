@@ -1,6 +1,28 @@
-
+import { 
+  Container, 
+  Paper, 
+  Title, 
+  Text, 
+  Button, 
+  Group, 
+  Stack, 
+  Alert, 
+  Code, 
+  Loader, 
+  List,
+  Badge,
+  Box,
+  Divider
+} from '@mantine/core';
+import { 
+  IconCheck, 
+  IconX, 
+  IconInfoCircle, 
+  IconAlertTriangle, 
+  IconFolder,
+  IconLock 
+} from '@tabler/icons-react';
 import { useVaultLocation } from '../hooks/useVaultLocation';
-import './VaultLocationSelector.css';
 
 interface VaultLocationSelectorProps {
   onLocationSet?: (path: string) => void;
@@ -30,133 +52,174 @@ export function VaultLocationSelector({ onLocationSet }: VaultLocationSelectorPr
 
   if (isLoading) {
     return (
-      <div className="vault-location-selector">
-        <div className="loading">
-          <div className="spinner"></div>
-          <p>Loading vault configuration...</p>
-        </div>
-      </div>
+      <Container size="md" py="xl">
+        <Paper p="xl" radius="lg" shadow="md">
+          <Stack align="center" gap="md">
+            <Loader size="lg" />
+            <Text size="lg">Loading vault configuration...</Text>
+          </Stack>
+        </Paper>
+      </Container>
     );
   }
 
   return (
-    <div className="vault-location-selector">
-      <div className="header">
-        <h2>Vault Location</h2>
-        <p>Choose where to store your encrypted notes</p>
-      </div>
+    <Container size="md" py="xl">
+      <Paper p="xl" radius="lg" shadow="md">
+        <Stack gap="xl">
+          {/* Header */}
+          <Box>
+            <Title order={2} mb="xs">
+              <Group gap="sm">
+                <IconFolder size={24} />
+                Vault Location
+              </Group>
+            </Title>
+            <Text c="dimmed" size="lg">
+              Choose where to store your encrypted notes
+            </Text>
+          </Box>
 
-      <div className="current-location">
-        <label>Current Vault Location:</label>
-        <div className="location-display">
-          {currentVaultLocation ? (
-            <code className="path">{currentVaultLocation}</code>
-          ) : (
-            <span className="no-location">No vault location set</span>
-          )}
-        </div>
-      </div>
-
-      <div className="selection-area">
-        <div className="selection-controls">
-          <button 
-            className="select-button primary"
-            onClick={selectDirectory}
-            disabled={isValidating}
-          >
-            {isValidating ? 'Validating...' : 'Select Directory'}
-          </button>
-          
-          {hasChanges && (
-            <button 
-              className="clear-button secondary"
-              onClick={clearSelection}
-              disabled={isValidating}
-            >
-              Cancel
-            </button>
-          )}
-        </div>
-
-        {selectedPath && selectedPath !== currentVaultLocation && (
-          <div className="selected-path">
-            <label>Selected Path:</label>
-            <code className="path">{selectedPath}</code>
-          </div>
-        )}
-
-        {isValidating && (
-          <div className="validation-status">
-            <div className="spinner small"></div>
-            <span>Validating directory...</span>
-          </div>
-        )}
-
-        {validationResult && !isValidating && (
-          <div className="validation-result">
-            <div className={`status ${validationResult.is_valid ? 'valid' : 'invalid'}`}>
-              {validationResult.is_valid ? (
-                <div className="status-item valid">
-                  <span className="icon icon-check"></span>
-                  <span>Directory exists and is accessible</span>
-                </div>
-              ) : (
-                <div className="status-item invalid">
-                  <span className="icon icon-x"></span>
-                  <span>Directory is not accessible</span>
-                </div>
-              )}
-              
-              {validationResult.is_valid && (
-                <div className={`status-item ${validationResult.is_writable ? 'valid' : 'invalid'}`}>
-                  <span className={`icon ${validationResult.is_writable ? 'icon-check' : 'icon-x'}`}></span>
-                  <span>{validationResult.is_writable ? 'Directory is writable' : 'Directory is not writable'}</span>
-                </div>
-              )}
-
-              {validationResult.has_existing_vault && (
-                <div className="status-item info">
-                  <span className="icon icon-info"></span>
-                  <span>
-                    Existing vault found: {validationResult.vault_info?.name || 'Unknown'}
-                    {validationResult.vault_info?.created_at && (
-                      <span className="vault-date">
-                        {' '}(created {new Date(validationResult.vault_info.created_at).toLocaleDateString()})
-                      </span>
-                    )}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {canConfirm && (
-              <button 
-                className="confirm-button primary"
-                onClick={handleConfirm}
-              >
-                {validationResult.has_existing_vault ? 'Use Existing Vault' : 'Set Vault Location'}
-              </button>
+          {/* Current Location */}
+          <Box>
+            <Text fw={500} mb="xs">Current Vault Location:</Text>
+            {currentVaultLocation ? (
+              <Code block p="sm" bg="gray.1">
+                {currentVaultLocation}
+              </Code>
+            ) : (
+              <Text c="dimmed" fs="italic">
+                No vault location set
+              </Text>
             )}
-          </div>
-        )}
+          </Box>
 
-        {error && (
-          <div className="error-message">
-            <span className="icon icon-warning"></span>
-            <span>{error}</span>
-          </div>
-        )}
-      </div>
+          <Divider />
 
-      <div className="info-section">
-        <h3>About Vault Location</h3>
-        <ul>
-          <li>Your vault contains all your encrypted notes and settings</li>
-          <li>Choose a location that you can regularly back up</li>
-          <li>The directory must be writable by the application</li>
-          <li>You can change this location later in settings</li>
-        </ul>
-      </div>
-    </div>
+          {/* Selection Controls */}
+          <Stack gap="md">
+            <Group>
+              <Button
+                leftSection={<IconFolder size={16} />}
+                onClick={selectDirectory}
+                loading={isValidating}
+                size="md"
+              >
+                {isValidating ? 'Validating...' : 'Select Directory'}
+              </Button>
+              
+              {hasChanges && (
+                <Button
+                  variant="light"
+                  onClick={clearSelection}
+                  disabled={isValidating}
+                  size="md"
+                >
+                  Cancel
+                </Button>
+              )}
+            </Group>
+
+            {/* Selected Path Display */}
+            {selectedPath && selectedPath !== currentVaultLocation && (
+              <Box>
+                <Text fw={500} mb="xs">Selected Path:</Text>
+                <Code block p="sm" bg="blue.0">
+                  {selectedPath}
+                </Code>
+              </Box>
+            )}
+
+            {/* Validation Status */}
+            {isValidating && (
+              <Alert 
+                icon={<Loader size={16} />} 
+                title="Validating directory..."
+                color="blue"
+                variant="light"
+              />
+            )}
+
+            {/* Validation Results */}
+            {validationResult && !isValidating && (
+              <Stack gap="md">
+                <Stack gap="xs">
+                  <Alert
+                    icon={validationResult.is_valid ? <IconCheck size={16} /> : <IconX size={16} />}
+                    title={validationResult.is_valid ? "Directory is accessible" : "Directory is not accessible"}
+                    color={validationResult.is_valid ? "green" : "red"}
+                    variant="light"
+                  />
+                  
+                  {validationResult.is_valid && (
+                    <Alert
+                      icon={validationResult.is_writable ? <IconCheck size={16} /> : <IconX size={16} />}
+                      title={validationResult.is_writable ? "Directory is writable" : "Directory is not writable"}
+                      color={validationResult.is_writable ? "green" : "red"}
+                      variant="light"
+                    />
+                  )}
+
+                  {validationResult.has_existing_vault && (
+                    <Alert
+                      icon={<IconInfoCircle size={16} />}
+                      title="Existing vault found"
+                      color="blue"
+                      variant="light"
+                    >
+                      <Group gap="xs" mt="xs">
+                        <Badge leftSection={<IconLock size={12} />} variant="light">
+                          {validationResult.vault_info?.name || 'Unknown'}
+                        </Badge>
+                        {validationResult.vault_info?.created_at && (
+                          <Text size="sm" c="dimmed">
+                            Created {new Date(validationResult.vault_info.created_at).toLocaleDateString()}
+                          </Text>
+                        )}
+                      </Group>
+                    </Alert>
+                  )}
+                </Stack>
+
+                {canConfirm && (
+                  <Button
+                    onClick={handleConfirm}
+                    size="md"
+                    leftSection={validationResult.has_existing_vault ? <IconLock size={16} /> : <IconFolder size={16} />}
+                  >
+                    {validationResult.has_existing_vault ? 'Use Existing Vault' : 'Set Vault Location'}
+                  </Button>
+                )}
+              </Stack>
+            )}
+
+            {/* Error Display */}
+            {error && (
+              <Alert
+                icon={<IconAlertTriangle size={16} />}
+                title="Error"
+                color="red"
+                variant="light"
+              >
+                {error}
+              </Alert>
+            )}
+          </Stack>
+
+          <Divider />
+
+          {/* Info Section */}
+          <Box>
+            <Title order={4} mb="md">About Vault Location</Title>
+            <List spacing="xs" size="sm">
+              <List.Item>Your vault contains all your encrypted notes and settings</List.Item>
+              <List.Item>Choose a location that you can regularly back up</List.Item>
+              <List.Item>The directory must be writable by the application</List.Item>
+              <List.Item>You can change this location later in settings</List.Item>
+            </List>
+          </Box>
+        </Stack>
+      </Paper>
+    </Container>
   );
 } 

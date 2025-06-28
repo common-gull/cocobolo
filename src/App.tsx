@@ -1,5 +1,26 @@
 import { useEffect, useState } from 'react';
 import { Provider as JotaiProvider, useSetAtom } from 'jotai';
+import { 
+  Container, 
+  Paper, 
+  Title, 
+  Text, 
+  TextInput, 
+  Button, 
+  Group, 
+  Stack, 
+  Alert, 
+  Badge,
+  Box,
+  Divider,
+  Loader,
+  Center
+} from '@mantine/core';
+import { 
+  IconLock, 
+  IconAlertTriangle,
+  IconCheck
+} from '@tabler/icons-react';
 import { api } from './utils/api';
 import { VaultLocationSelector } from './components/VaultLocationSelector';
 import { VaultPasswordSetup } from './components/VaultPasswordSetup';
@@ -8,11 +29,10 @@ import { VaultUnlock } from './components/VaultUnlock';
 import { MarkdownEditor } from './components/MarkdownEditor';
 import { MainLayout } from './components/Layout/MainLayout';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
-import { Icons } from './components/Icons';
+
 import { addNoteAtom } from './stores/notesStore';
 import { useNoteUpdates } from './hooks/useNoteUpdates';
 import type { AppInfo, AppView, VaultSetupInfo, VaultInfo, Note, NoteMetadata } from './types';
-import './App.css';
 
 function AppContent() {
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
@@ -201,62 +221,56 @@ function AppContent() {
     }
   };
 
-
-
   const handleCreateNote = async () => {
-    if (!vaultLocation || !sessionId) {
-      setError('Vault not available');
-      return;
-    }
+    if (!vaultLocation || !sessionId) return;
 
     try {
-      // Create a new note with undefined title
-      const result = await api.createNote(vaultLocation, sessionId);
+      const result = await api.createNote(
+        vaultLocation,
+        sessionId,
+        'Untitled Note',
+        '',
+        undefined,
+        undefined
+      );
+
       if (result.success && result.note) {
-        // Add note to Jotai store
+        // Add to store - convert Note to NoteMetadata
         const noteMetadata: NoteMetadata = {
           id: result.note.id,
           title: result.note.title,
           content_preview: result.note.content.substring(0, 100),
           created_at: result.note.created_at,
           updated_at: result.note.updated_at,
-          tags: result.note.tags
+          tags: result.note.tags,
+          ...(result.note.folder_path && { folder_path: result.note.folder_path })
         };
-        if (result.note.folder_path) {
-          noteMetadata.folder_path = result.note.folder_path;
-        }
         addNote(noteMetadata);
         
+        // Navigate to editor
         setCurrentNote(result.note);
         setCurrentView('edit-note');
-      } else {
-        setError(result.error_message || 'Failed to create note');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create note');
+    } catch (error) {
+      console.error('Failed to create note:', error);
     }
   };
 
-
-
   const handleSelectNote = async (noteId: string) => {
-    if (!vaultLocation || !sessionId) {
-      setError('Vault not available');
-      return;
-    }
+    if (!vaultLocation || !sessionId) return;
 
     try {
       const note = await api.loadNote(vaultLocation, sessionId, noteId);
       setCurrentNote(note);
       setCurrentView('edit-note');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load note');
+    } catch (error) {
+      console.error('Failed to load note:', error);
     }
   };
 
   const handleCloseEditor = () => {
     setCurrentNote(null);
-    setCurrentView('notes-list');
+    setCurrentView('main-app');
   };
 
   const handleEditorError = (errorMessage: string) => {
@@ -264,24 +278,49 @@ function AppContent() {
   };
 
   const handleNavigate = (view: string) => {
-    setCurrentView(view as AppView);
+    switch (view) {
+      case 'home':
+        setCurrentView('home');
+        break;
+      case 'main-app':
+        setCurrentView('main-app');
+        break;
+      case 'create-note':
+        handleCreateNote();
+        break;
+      case 'notes-list':
+        setCurrentView('main-app');
+        break;
+      default:
+        console.warn('Unknown navigation view:', view);
+    }
   };
 
   if (loading) {
     return (
-      <div className="loading">
-        Loading Cocobolo...
-      </div>
+      <Container size="sm" py="xl">
+        <Center>
+          <Stack align="center" gap="md">
+            <Loader size="lg" />
+            <Text size="lg">Loading Cocobolo...</Text>
+          </Stack>
+        </Center>
+      </Container>
     );
   }
 
   if (error) {
     return (
-      <div className="container">
-        <div className="error-message">
+      <Container size="sm" py="xl">
+        <Alert
+          icon={<IconAlertTriangle size={16} />}
+          title="Error"
+          color="red"
+          variant="light"
+        >
           {error}
-        </div>
-      </div>
+        </Alert>
+      </Container>
     );
   }
 
@@ -311,12 +350,18 @@ function AppContent() {
       
       case 'main-app':
         return vaultSetupInfo?.vault_info && sessionId ? (
-          <div className="main-app-content">
-            <div className="welcome-header">
-              <h2>Welcome to your secure vault!</h2>
-              <p>Select a note from the sidebar to get started, or create a new note.</p>
-            </div>
-          </div>
+          <Container size="lg" py="xl">
+            <Paper p="xl" radius="lg" shadow="md">
+              <Stack align="center" gap="xl">
+                <Box ta="center">
+                  <Title order={2} mb="md">Welcome to your secure vault!</Title>
+                  <Text size="lg" c="dimmed">
+                    Select a note from the sidebar to get started, or create a new note.
+                  </Text>
+                </Box>
+              </Stack>
+            </Paper>
+          </Container>
         ) : null;
 
       case 'create-note':
@@ -330,75 +375,108 @@ function AppContent() {
       
       case 'home':
         return (
-          <div className="home-view">
-            <div className="welcome-section">
-              <h2>Welcome to Cocobolo!</h2>
-              <p>Your secure, encrypted note-taking companion</p>
-              
-              {vaultSetupInfo?.vault_info && (
-                <div className="vault-info-display">
-                  <h3>Current Vault</h3>
-                  <div className="vault-card">
-                    <div className="vault-header">
-                      <h4>{vaultSetupInfo.vault_info.name}</h4>
-                      <div className="vault-badges">
-                        {vaultSetupInfo.is_encrypted && (
-                          <span className="encryption-badge">
-                            <Icons.lock size="xs" />
-                            Encrypted
-                          </span>
-                        )}
-                        <span className="version-badge">v{vaultSetupInfo.vault_info.version}</span>
-                      </div>
-                    </div>
-                    <div className="vault-details">
-                      <p><strong>Location:</strong> {vaultLocation}</p>
-                      <p><strong>Created:</strong> {new Date(vaultSetupInfo.vault_info.created_at).toLocaleDateString()}</p>
-                    </div>
-                    
-                    {vaultSetupInfo.is_encrypted && (
-                      <button 
-                        className="unlock-vault-button primary"
-                        onClick={() => setCurrentView('vault-unlock')}
-                      >
-                        <Icons.lock size="sm" />
-                        Unlock Vault
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+          <Container size="md" py="xl">
+            <Stack gap="xl">
+              <Paper p="xl" radius="lg" shadow="md">
+                <Stack gap="xl">
+                  <Box ta="center">
+                    <Title order={2} mb="md">Welcome to Cocobolo!</Title>
+                    <Text size="lg" c="dimmed">
+                      Your secure, encrypted note-taking companion
+                    </Text>
+                  </Box>
+                  
+                  {vaultSetupInfo?.vault_info && (
+                    <>
+                      <Divider />
+                      <Box>
+                        <Title order={3} mb="md">Current Vault</Title>
+                        <Paper p="md" radius="md" withBorder>
+                          <Stack gap="md">
+                            <Group justify="space-between" align="start">
+                              <Box>
+                                <Title order={4} mb="xs">{vaultSetupInfo.vault_info.name}</Title>
+                                <Group gap="xs">
+                                  {vaultSetupInfo.is_encrypted && (
+                                    <Badge leftSection={<IconLock size={12} />} variant="light" color="blue">
+                                      Encrypted
+                                    </Badge>
+                                  )}
+                                  <Badge variant="light" color="gray">
+                                    v{vaultSetupInfo.vault_info.version}
+                                  </Badge>
+                                </Group>
+                              </Box>
+                            </Group>
+                            
+                            <Stack gap="xs">
+                              <Text size="sm">
+                                <Text span fw={500}>Location:</Text> {vaultLocation}
+                              </Text>
+                              <Text size="sm">
+                                <Text span fw={500}>Created:</Text> {new Date(vaultSetupInfo.vault_info.created_at).toLocaleDateString()}
+                              </Text>
+                            </Stack>
+                            
+                            {vaultSetupInfo.is_encrypted && (
+                              <Button 
+                                leftSection={<IconLock size={16} />}
+                                onClick={() => setCurrentView('vault-unlock')}
+                                size="md"
+                              >
+                                Unlock Vault
+                              </Button>
+                            )}
+                          </Stack>
+                        </Paper>
+                      </Box>
+                    </>
+                  )}
+                </Stack>
+              </Paper>
 
-            <div className="demo-section">
-              <h3>Demo Greeting</h3>
-              <div className="demo-form">
-                <input
-                  type="text"
-                  value={greetInput}
-                  onChange={(e) => setGreetInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Enter your name"
-                  className="demo-input"
-                />
-                <button onClick={handleGreet} className="demo-button">
-                  Greet
-                </button>
-              </div>
-              
-              {greetResult && (
-                <div className="demo-result success">
-                  {greetResult}
-                </div>
-              )}
-              
-              {greetError && (
-                <div className="demo-result error">
-                  Error: {greetError}
-                </div>
-              )}
-            </div>
-          </div>
+              <Paper p="xl" radius="lg" shadow="md">
+                <Stack gap="lg">
+                  <Title order={3}>Demo Greeting</Title>
+                  
+                  <Group>
+                    <TextInput
+                      placeholder="Enter your name"
+                      value={greetInput}
+                      onChange={(e) => setGreetInput(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                      style={{ flex: 1 }}
+                    />
+                    <Button onClick={handleGreet}>
+                      Greet
+                    </Button>
+                  </Group>
+                  
+                  {greetResult && (
+                    <Alert
+                      icon={<IconCheck size={16} />}
+                      title="Success"
+                      color="green"
+                      variant="light"
+                    >
+                      {greetResult}
+                    </Alert>
+                  )}
+                  
+                  {greetError && (
+                    <Alert
+                      icon={<IconAlertTriangle size={16} />}
+                      title="Error"
+                      color="red"
+                      variant="light"
+                    >
+                      {greetError}
+                    </Alert>
+                  )}
+                </Stack>
+              </Paper>
+            </Stack>
+          </Container>
         );
       
       case 'edit-note':
@@ -413,24 +491,26 @@ function AppContent() {
   if (['vault-setup', 'password-setup', 'vault-unlock', 'home', 'create-note'].includes(currentView)) {
     return (
       <ThemeProvider>
-        <div className="container">
-          <header className="app-header">
-            <h1>
-              <Icons.lock size="lg" />
-              Cocobolo
-            </h1>
-            <p>Secure Note-Taking Application</p>
-            {appInfo && (
-              <div className="app-info">
-                <span>v{appInfo.version}</span>
-              </div>
-            )}
-          </header>
+        <Container size="lg" py="xl">
+          <Stack gap="xl">
+            <Paper p="lg" radius="lg" shadow="sm" ta="center">
+              <Group justify="center" gap="sm" mb="md">
+                <IconLock size={32} />
+                <Title order={1}>Cocobolo</Title>
+              </Group>
+              <Text size="lg" c="dimmed" mb="sm">
+                Secure Note-Taking Application
+              </Text>
+              {appInfo && (
+                <Badge variant="light" color="gray" size="sm">
+                  v{appInfo.version}
+                </Badge>
+              )}
+            </Paper>
 
-          <main className="app-main">
             {renderContent()}
-          </main>
-        </div>
+          </Stack>
+        </Container>
       </ThemeProvider>
     );
   }

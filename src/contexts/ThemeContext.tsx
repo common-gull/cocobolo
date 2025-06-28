@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useMantineColorScheme, MantineColorScheme } from '@mantine/core';
 
 export type Theme = 'light' | 'dark' | 'system';
 
@@ -16,6 +17,8 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
+  const { setColorScheme } = useMantineColorScheme();
+  
   const [theme, setThemeState] = useState<Theme>(() => {
     // Load theme from localStorage or default to system
     const saved = localStorage.getItem('cocobolo-theme') as Theme;
@@ -41,11 +44,15 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   // Calculate effective theme
   const effectiveTheme = theme === 'system' ? systemTheme : theme;
 
-  // Apply theme to document
+  // Apply theme to document and Mantine
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', effectiveTheme);
     document.documentElement.className = effectiveTheme;
-  }, [effectiveTheme]);
+    
+    // Update Mantine color scheme
+    const mantineColorScheme: MantineColorScheme = theme === 'system' ? 'auto' : theme;
+    setColorScheme(mantineColorScheme);
+  }, [effectiveTheme, theme, setColorScheme]);
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);

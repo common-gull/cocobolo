@@ -1,45 +1,46 @@
 import React from 'react';
 import {
   // Navigation & UI
-  Menu,
-  Home,
-  Plus,
-  Search,
-  X,
-  ChevronRight,
+  IconMenu2,
+  IconHome,
+  IconPlus,
+  IconSearch,
+  IconX,
+  IconChevronRight,
   
   // Files & Folders
-  File,
-  Folder,
-  FolderPlus,
-  FileText,
+  IconFile,
+  IconFolder,
+  IconFolderPlus,
+  IconFileText,
   
   // Security & Authentication
-  Lock,
-  Eye,
-  EyeOff,
-  Shield,
+  IconLock,
+  IconEye,
+  IconEyeOff,
+  IconShield,
   
   // Status & Feedback
-  Check,
-  AlertTriangle,
-  Info,
-  Clock,
-  RefreshCw,
+  IconCheck,
+  IconAlertTriangle,
+  IconInfoCircle,
+  IconClock,
+  IconRefresh,
   
   // Theme & Settings
-  Sun,
-  Moon,
-  Monitor,
-  Keyboard,
-  LogOut,
+  IconSun,
+  IconMoon,
+  IconDeviceDesktop,
+  IconKeyboard,
+  IconLogout,
   
   // Content & Editor
-  Lightbulb,
+  IconBulb,
   
-  // Generic
-  LucideIcon
-} from 'lucide-react';
+} from '@tabler/icons-react';
+
+// Generic icon props type
+type TablerIconsProps = React.ComponentProps<typeof IconLock>;
 
 // Icon size presets
 export const IconSizes = {
@@ -57,7 +58,7 @@ interface IconProps {
   size?: IconSize | number;
   className?: string;
   color?: string;
-  strokeWidth?: number;
+  stroke?: number;
 }
 
 // Helper function to get size value
@@ -65,13 +66,13 @@ const getSize = (size: IconSize | number = 'md'): number => {
   return typeof size === 'number' ? size : IconSizes[size];
 };
 
-// Icon component factory
-const createIcon = (LucideComponent: LucideIcon) => 
-  ({ size = 'md', className = '', color = 'currentColor', strokeWidth = 2, ...props }: IconProps & React.ComponentProps<LucideIcon>) => (
-    <LucideComponent
+// Icon component factory for Tabler icons
+const createIcon = (TablerComponent: React.ComponentType<TablerIconsProps>) => 
+  ({ size = 'md', className = '', color = 'currentColor', stroke = 1.5, ...props }: IconProps & TablerIconsProps) => (
+    <TablerComponent
       size={getSize(size)}
       color={color}
-      strokeWidth={strokeWidth}
+      stroke={stroke}
       className={className}
       {...props}
     />
@@ -80,41 +81,41 @@ const createIcon = (LucideComponent: LucideIcon) =>
 // Export all icons with consistent interface
 export const Icons = {
   // Navigation & UI
-  menu: createIcon(Menu),
-  home: createIcon(Home),
-  plus: createIcon(Plus),
-  search: createIcon(Search),
-  x: createIcon(X),
-  chevronRight: createIcon(ChevronRight),
+  menu: createIcon(IconMenu2),
+  home: createIcon(IconHome),
+  plus: createIcon(IconPlus),
+  search: createIcon(IconSearch),
+  x: createIcon(IconX),
+  chevronRight: createIcon(IconChevronRight),
   
   // Files & Folders
-  file: createIcon(File),
-  folder: createIcon(Folder),
-  folderPlus: createIcon(FolderPlus),
-  fileText: createIcon(FileText),
+  file: createIcon(IconFile),
+  folder: createIcon(IconFolder),
+  folderPlus: createIcon(IconFolderPlus),
+  fileText: createIcon(IconFileText),
   
   // Security & Authentication
-  lock: createIcon(Lock),
-  eye: createIcon(Eye),
-  eyeOff: createIcon(EyeOff),
-  shield: createIcon(Shield),
+  lock: createIcon(IconLock),
+  eye: createIcon(IconEye),
+  eyeOff: createIcon(IconEyeOff),
+  shield: createIcon(IconShield),
   
   // Status & Feedback
-  check: createIcon(Check),
-  warning: createIcon(AlertTriangle),
-  info: createIcon(Info),
-  clock: createIcon(Clock),
-  refresh: createIcon(RefreshCw),
+  check: createIcon(IconCheck),
+  warning: createIcon(IconAlertTriangle),
+  info: createIcon(IconInfoCircle),
+  clock: createIcon(IconClock),
+  refresh: createIcon(IconRefresh),
   
   // Theme & Settings
-  sun: createIcon(Sun),
-  moon: createIcon(Moon),
-  monitor: createIcon(Monitor),
-  keyboard: createIcon(Keyboard),
-  logout: createIcon(LogOut),
+  sun: createIcon(IconSun),
+  moon: createIcon(IconMoon),
+  monitor: createIcon(IconDeviceDesktop),
+  keyboard: createIcon(IconKeyboard),
+  logout: createIcon(IconLogout),
   
   // Content & Editor
-  lightbulb: createIcon(Lightbulb),
+  lightbulb: createIcon(IconBulb),
 } as const;
 
 // Legacy icon mapping for easier migration

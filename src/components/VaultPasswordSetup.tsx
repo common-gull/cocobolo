@@ -1,8 +1,31 @@
 import { useState, useCallback, useEffect } from 'react';
+import { 
+  Container, 
+  Paper, 
+  Title, 
+  Text, 
+  TextInput, 
+  PasswordInput, 
+  Button, 
+  Group, 
+  Stack, 
+  Alert, 
+  Progress,
+  List,
+  Box,
+  Divider,
+  Loader
+} from '@mantine/core';
+import { 
+  IconLock, 
+  IconAlertTriangle, 
+  IconCheck, 
+  IconX, 
+  IconBulb,
+  IconShield
+} from '@tabler/icons-react';
 import { api } from '../utils/api';
-
 import type { PasswordSetupState, VaultInfo } from '../types';
-import './VaultPasswordSetup.css';
 
 interface VaultPasswordSetupProps {
   vaultPath: string;
@@ -63,13 +86,7 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
     setState(prev => ({ ...prev, vaultName }));
   }, []);
 
-  const togglePasswordVisibility = useCallback(() => {
-    setState(prev => ({ ...prev, showPassword: !prev.showPassword }));
-  }, []);
 
-  const toggleConfirmPasswordVisibility = useCallback(() => {
-    setState(prev => ({ ...prev, showConfirmPassword: !prev.showConfirmPassword }));
-  }, []);
 
   const canCreateVault = () => {
     return (
@@ -113,18 +130,18 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
     }
   };
 
-  const getStrengthColor = (score: number) => {
+  const getStrengthColor = (score: number): string => {
     switch (score) {
       case 0:
       case 1:
-        return 'var(--error-color)';
+        return 'red';
       case 2:
-        return 'var(--warning-color)';
+        return 'orange';
       case 3:
-        return 'var(--info-color)';
+        return 'blue';
       case 4:
       default:
-        return 'var(--success-color)';
+        return 'green';
     }
   };
 
@@ -144,190 +161,190 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
     }
   };
 
+  const passwordMatchStatus = getPasswordMatchStatus();
+
   return (
-    <div className="vault-password-setup">
-      <div className="header">
-        <h2>Create Vault Password</h2>
-        <p>Set a strong password to encrypt your notes</p>
-      </div>
+    <Container size="md" py="xl">
+      <Paper p="xl" radius="lg" shadow="md">
+        <Stack gap="xl">
+          {/* Header */}
+          <Box>
+            <Title order={2} mb="xs">
+              <Group gap="sm">
+                <IconLock size={24} />
+                Create Vault Password
+              </Group>
+            </Title>
+            <Text c="dimmed" size="lg">
+              Set a strong password to encrypt your notes
+            </Text>
+          </Box>
 
-      <div className="form-section">
-        <div className="form-group">
-          <label htmlFor="vault-name">Vault Name</label>
-          <input
-            id="vault-name"
-            type="text"
-            value={state.vaultName}
-            onChange={(e) => handleVaultNameChange(e.target.value)}
-            placeholder="Enter a name for your vault"
-            disabled={state.isCreating}
-            className="form-input"
-          />
-        </div>
+          <Divider />
 
-        <div className="form-group">
-          <label htmlFor="password">Password</label>
-          <div className="password-input-container">
-            <input
-              id="password"
-              type={state.showPassword ? 'text' : 'password'}
-              value={state.password}
-              onChange={(e) => handlePasswordChange(e.target.value)}
-              placeholder="Enter a strong password"
+          {/* Form Section */}
+          <Stack gap="lg">
+            <TextInput
+              label="Vault Name"
+              placeholder="Enter a name for your vault"
+              value={state.vaultName}
+              onChange={(e) => handleVaultNameChange(e.target.value)}
               disabled={state.isCreating}
-              className="form-input password-input"
+              size="md"
+              required
             />
-            <button
-              type="button"
-              className="password-toggle"
-              onClick={togglePasswordVisibility}
-              disabled={state.isCreating}
-            >
-              <span className={`icon ${state.showPassword ? 'icon-eye-slash' : 'icon-eye'}`}></span>
-            </button>
-          </div>
-          
-          {state.isValidating && (
-            <div className="validation-status">
-              <div className="spinner small"></div>
-              <span>Checking password strength...</span>
-            </div>
-          )}
 
-          {state.passwordStrength && !state.isValidating && (
-            <div className="password-strength">
-              <div className="strength-header">
-                <span className="strength-label">
-                  Password Strength: 
-                  <span 
-                    className="strength-score"
-                    style={{ color: getStrengthColor(state.passwordStrength.score) }}
-                  >
-                    {getStrengthLabel(state.passwordStrength.score)}
-                  </span>
-                </span>
-                <div className="strength-bar">
-                  <div 
-                    className="strength-fill"
-                    style={{ 
-                      width: `${(state.passwordStrength.score / 4) * 100}%`,
-                      backgroundColor: getStrengthColor(state.passwordStrength.score)
-                    }}
+            <Box>
+                             <PasswordInput
+                 label="Password"
+                 placeholder="Enter a strong password"
+                 value={state.password}
+                 onChange={(e) => handlePasswordChange(e.target.value)}
+                 disabled={state.isCreating}
+                 size="md"
+                 required
+               />
+              
+              {state.isValidating && (
+                <Alert 
+                  icon={<Loader size={16} />} 
+                  title="Checking password strength..."
+                  color="blue"
+                  variant="light"
+                  mt="sm"
+                />
+              )}
+
+              {state.passwordStrength && !state.isValidating && (
+                <Box mt="sm">
+                  <Group justify="space-between" mb="xs">
+                    <Text size="sm" fw={500}>
+                      Password Strength: 
+                      <Text span c={getStrengthColor(state.passwordStrength.score)} fw={600} ml="xs">
+                        {getStrengthLabel(state.passwordStrength.score)}
+                      </Text>
+                    </Text>
+                  </Group>
+                  
+                  <Progress 
+                    value={(state.passwordStrength.score / 4) * 100} 
+                    color={getStrengthColor(state.passwordStrength.score)}
+                    size="sm"
+                    mb="md"
                   />
-                </div>
-              </div>
 
-              {state.passwordStrength.issues.length > 0 && (
-                <div className="strength-issues">
-                  <h4>Requirements:</h4>
-                  <ul>
-                    {state.passwordStrength.issues.map((issue, index) => (
-                      <li key={index} className="issue-item">
-                        <span className="icon icon-warning"></span>
-                        {issue}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                  {state.passwordStrength.issues.length > 0 && (
+                    <Alert
+                      icon={<IconAlertTriangle size={16} />}
+                      title="Requirements:"
+                      color="orange"
+                      variant="light"
+                      mb="sm"
+                    >
+                      <List spacing="xs" size="sm">
+                        {state.passwordStrength.issues.map((issue, index) => (
+                          <List.Item key={index}>{issue}</List.Item>
+                        ))}
+                      </List>
+                    </Alert>
+                  )}
+
+                  {state.passwordStrength.suggestions.length > 0 && (
+                    <Alert
+                      icon={<IconBulb size={16} />}
+                      title="Suggestions:"
+                      color="blue"
+                      variant="light"
+                    >
+                      <List spacing="xs" size="sm">
+                        {state.passwordStrength.suggestions.map((suggestion, index) => (
+                          <List.Item key={index}>{suggestion}</List.Item>
+                        ))}
+                      </List>
+                    </Alert>
+                  )}
+                </Box>
               )}
+            </Box>
 
-              {state.passwordStrength.suggestions.length > 0 && (
-                <div className="strength-suggestions">
-                  <h4>Suggestions:</h4>
-                  <ul>
-                    {state.passwordStrength.suggestions.map((suggestion, index) => (
-                      <li key={index} className="suggestion-item">
-                        <span className="icon icon-lightbulb"></span>
-                        {suggestion}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+            <Box>
+                             <PasswordInput
+                 label="Confirm Password"
+                 placeholder="Confirm your password"
+                 value={state.confirmPassword}
+                 onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+                 disabled={state.isCreating}
+                 size="md"
+                 required
+                 error={passwordMatchStatus === false ? 'Passwords do not match' : undefined}
+               />
+              
+              {state.confirmPassword && passwordMatchStatus !== null && (
+                <Alert
+                  icon={passwordMatchStatus ? <IconCheck size={16} /> : <IconX size={16} />}
+                  title={passwordMatchStatus ? 'Passwords match' : 'Passwords do not match'}
+                  color={passwordMatchStatus ? 'green' : 'red'}
+                  variant="light"
+                  mt="sm"
+                />
               )}
-            </div>
-          )}
-        </div>
+            </Box>
+          </Stack>
 
-        <div className="form-group">
-          <label htmlFor="confirm-password">Confirm Password</label>
-          <div className="password-input-container">
-            <input
-              id="confirm-password"
-              type={state.showConfirmPassword ? 'text' : 'password'}
-              value={state.confirmPassword}
-              onChange={(e) => handleConfirmPasswordChange(e.target.value)}
-              placeholder="Confirm your password"
-              disabled={state.isCreating}
-              className={`form-input password-input ${
-                getPasswordMatchStatus() === false ? 'invalid' : ''
-              }`}
-            />
-            <button
-              type="button"
-              className="password-toggle"
-              onClick={toggleConfirmPasswordVisibility}
-              disabled={state.isCreating}
+          {/* Error Display */}
+          {state.error && (
+            <Alert
+              icon={<IconAlertTriangle size={16} />}
+              title="Error"
+              color="red"
+              variant="light"
             >
-              <span className={`icon ${state.showConfirmPassword ? 'icon-eye-slash' : 'icon-eye'}`}></span>
-            </button>
-          </div>
-          
-          {state.confirmPassword && getPasswordMatchStatus() !== null && (
-            <div className={`password-match ${getPasswordMatchStatus() ? 'valid' : 'invalid'}`}>
-              <span className={`icon ${getPasswordMatchStatus() ? 'icon-check' : 'icon-x'}`}></span>
-              <span>
-                {getPasswordMatchStatus() ? 'Passwords match' : 'Passwords do not match'}
-              </span>
-            </div>
+              {state.error}
+            </Alert>
           )}
-        </div>
-      </div>
 
-      {state.error && (
-        <div className="error-message">
-          <span className="icon icon-warning"></span>
-          <span>{state.error}</span>
-        </div>
-      )}
+          <Divider />
 
-      <div className="security-notice">
-        <h3>
-          <span className="icon icon-lock"></span> Security Notice
-        </h3>
-        <ul>
-          <li>Your password is used to encrypt all your notes</li>
-          <li>We never store your password - only an encrypted hash</li>
-          <li>If you forget your password, your notes cannot be recovered</li>
-          <li>Choose a password you can remember but others cannot guess</li>
-        </ul>
-      </div>
-
-      <div className="form-actions">
-        {onCancel && (
-          <button 
-            className="cancel-button secondary"
-            onClick={onCancel}
-            disabled={state.isCreating}
+          {/* Security Notice */}
+          <Alert
+            icon={<IconShield size={16} />}
+            title="Security Notice"
+            color="blue"
+            variant="light"
           >
-            Cancel
-          </button>
-        )}
-        
-        <button 
-          className="create-button primary"
-          onClick={handleCreateVault}
-          disabled={!canCreateVault()}
-        >
-          {state.isCreating ? (
-            <>
-              <div className="spinner small"></div>
-              Creating Vault...
-            </>
-          ) : (
-            'Create Encrypted Vault'
-          )}
-        </button>
-      </div>
-    </div>
+            <List spacing="xs" size="sm">
+              <List.Item>Your password is used to encrypt all your notes</List.Item>
+              <List.Item>We never store your password - only an encrypted hash</List.Item>
+              <List.Item>If you forget your password, your notes cannot be recovered</List.Item>
+              <List.Item>Choose a password you can remember but others cannot guess</List.Item>
+            </List>
+          </Alert>
+
+          {/* Form Actions */}
+          <Group justify="flex-end" gap="md">
+            {onCancel && (
+              <Button
+                variant="light"
+                onClick={onCancel}
+                disabled={state.isCreating}
+                size="md"
+              >
+                Cancel
+              </Button>
+            )}
+            
+            <Button
+              leftSection={<IconLock size={16} />}
+              onClick={handleCreateVault}
+              disabled={!canCreateVault()}
+              loading={state.isCreating}
+              size="md"
+            >
+              {state.isCreating ? 'Creating Vault...' : 'Create Encrypted Vault'}
+            </Button>
+          </Group>
+        </Stack>
+      </Paper>
+    </Container>
   );
 } 

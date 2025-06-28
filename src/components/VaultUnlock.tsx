@@ -1,7 +1,28 @@
 import { useState, useCallback, useEffect } from 'react';
+import { 
+  Container, 
+  Paper, 
+  Title, 
+  Text, 
+  PasswordInput, 
+  Button, 
+  Group, 
+  Stack, 
+  Alert, 
+  Badge,
+  Box,
+  Divider,
+  List,
+  Center
+} from '@mantine/core';
+import { 
+  IconLock, 
+  IconAlertTriangle, 
+  IconClock, 
+  IconShield
+} from '@tabler/icons-react';
 import { api } from '../utils/api';
 import type { VaultUnlockState, VaultInfo, VaultUnlockResult } from '../types';
-import './VaultUnlock.css';
 
 interface VaultUnlockProps {
   vaultPath: string;
@@ -46,9 +67,7 @@ export function VaultUnlock({ vaultPath, vaultInfo, onVaultUnlocked, onCancel }:
     setState(prev => ({ ...prev, password, error: null }));
   }, []);
 
-  const togglePasswordVisibility = useCallback(() => {
-    setState(prev => ({ ...prev, showPassword: !prev.showPassword }));
-  }, []);
+
 
   const canUnlock = () => {
     return (
@@ -116,112 +135,116 @@ export function VaultUnlock({ vaultPath, vaultInfo, onVaultUnlocked, onCancel }:
   const timeRemaining = state.rateLimitInfo?.seconds_remaining;
 
   return (
-    <div className="vault-unlock">
-      <div className="header">
-        <div className="vault-icon">
-          <span className="icon icon-lock"></span>
-        </div>
-        <h2>Unlock Vault</h2>
-        <div className="vault-info">
-          <h3>{vaultInfo.name}</h3>
-          <div className="vault-details">
-            <span className="encryption-badge">
-              <span className="icon icon-lock"></span> Encrypted
-            </span>
-            <span className="created-date">
-              Created: {new Date(vaultInfo.created_at).toLocaleDateString()}
-            </span>
-          </div>
-        </div>
-      </div>
+    <Container size="sm" py="xl">
+      <Paper p="xl" radius="lg" shadow="md">
+        <Stack gap="xl">
+          {/* Header */}
+          <Stack align="center" gap="md">
+            <Center>
+              <IconLock size={48} color="var(--mantine-color-blue-6)" />
+            </Center>
+            
+            <Box ta="center">
+              <Title order={2} mb="xs">Unlock Vault</Title>
+              <Title order={3} c="dimmed" fw={500} mb="sm">{vaultInfo.name}</Title>
+              
+              <Group justify="center" gap="md">
+                <Badge leftSection={<IconLock size={12} />} variant="light" color="blue">
+                  Encrypted
+                </Badge>
+                <Text size="sm" c="dimmed">
+                  Created: {new Date(vaultInfo.created_at).toLocaleDateString()}
+                </Text>
+              </Group>
+            </Box>
+          </Stack>
 
-      <div className="unlock-form">
-        <div className="form-group">
-          <label htmlFor="unlock-password">Enter your vault password</label>
-          <div className="password-input-container">
-            <input
-              id="unlock-password"
-              type={state.showPassword ? 'text' : 'password'}
+          <Divider />
+
+          {/* Unlock Form */}
+          <Stack gap="lg">
+            <PasswordInput
+              label="Enter your vault password"
+              placeholder="Password"
               value={state.password}
               onChange={(e) => handlePasswordChange(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Password"
-              disabled={state.isUnlocking || isRateLimited}
-              className={`form-input password-input ${state.error ? 'invalid' : ''}`}
+              onKeyDown={handleKeyPress}
+              disabled={state.isUnlocking || !!isRateLimited}
+              error={state.error && !isRateLimited ? state.error : undefined}
+              size="md"
               autoFocus
             />
-            <button
-              type="button"
-              className="password-toggle"
-              onClick={togglePasswordVisibility}
-              disabled={state.isUnlocking || isRateLimited}
-            >
-              <span className={`icon ${state.showPassword ? 'icon-eye-slash' : 'icon-eye'}`}></span>
-            </button>
-          </div>
-        </div>
 
-        {isRateLimited && timeRemaining && (
-                  <div className="rate-limit-warning">
-          <span className="icon icon-clock"></span>
-            <div className="rate-limit-content">
-              <h4>Too Many Failed Attempts</h4>
-              <p>
-                Please wait {formatTimeRemaining(timeRemaining)} before trying again.
-                This security measure helps protect your vault from unauthorized access.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {state.error && !isRateLimited && (
-          <div className="error-message">
-            <span className="icon icon-warning"></span>
-            <span>{state.error}</span>
-          </div>
-        )}
-
-        <div className="form-actions">
-          {onCancel && (
-            <button 
-              className="cancel-button secondary"
-              onClick={onCancel}
-              disabled={state.isUnlocking}
-            >
-              Cancel
-            </button>
-          )}
-          
-          <button 
-            className="unlock-button primary"
-            onClick={handleUnlock}
-            disabled={!canUnlock()}
-          >
-            {state.isUnlocking ? (
-              <>
-                <div className="spinner small"></div>
-                Unlocking...
-              </>
-            ) : isRateLimited ? (
-              'Rate Limited'
-            ) : (
-              'Unlock Vault'
+            {/* Rate Limit Warning */}
+            {isRateLimited && timeRemaining && (
+              <Alert
+                icon={<IconClock size={16} />}
+                title="Too Many Failed Attempts"
+                color="orange"
+                variant="light"
+              >
+                <Text size="sm">
+                  Please wait {formatTimeRemaining(timeRemaining)} before trying again.
+                  This security measure helps protect your vault from unauthorized access.
+                </Text>
+              </Alert>
             )}
-          </button>
-        </div>
-      </div>
 
-      <div className="security-info">
-        <h3>
-          <span className="icon icon-info"></span> Security Information
-        </h3>
-        <ul>
-          <li>Your password is never stored or transmitted in plain text</li>
-          <li>Failed unlock attempts are rate-limited to prevent brute force attacks</li>
-          <li>Sessions automatically expire after 30 minutes of inactivity</li>
-          <li>All vault data is encrypted with military-grade ChaCha20Poly1305</li>
-        </ul>
-      </div>
-    </div>
+            {/* Error Display */}
+            {state.error && !isRateLimited && (
+              <Alert
+                icon={<IconAlertTriangle size={16} />}
+                title="Error"
+                color="red"
+                variant="light"
+              >
+                {state.error}
+              </Alert>
+            )}
+
+            {/* Form Actions */}
+            <Group justify="flex-end" gap="md">
+              {onCancel && (
+                <Button
+                  variant="light"
+                  onClick={onCancel}
+                  disabled={state.isUnlocking}
+                  size="md"
+                >
+                  Cancel
+                </Button>
+              )}
+              
+              <Button
+                leftSection={<IconLock size={16} />}
+                onClick={handleUnlock}
+                disabled={!canUnlock()}
+                loading={state.isUnlocking}
+                size="md"
+              >
+                {state.isUnlocking ? 'Unlocking...' : isRateLimited ? 'Rate Limited' : 'Unlock Vault'}
+              </Button>
+            </Group>
+          </Stack>
+
+          <Divider />
+
+          {/* Security Information */}
+          <Alert
+            icon={<IconShield size={16} />}
+            title="Security Information"
+            color="blue"
+            variant="light"
+          >
+            <List spacing="xs" size="sm">
+              <List.Item>Your password is never stored or transmitted in plain text</List.Item>
+              <List.Item>Failed unlock attempts are rate-limited to prevent brute force attacks</List.Item>
+              <List.Item>Sessions automatically expire after 30 minutes of inactivity</List.Item>
+              <List.Item>All vault data is encrypted with military-grade ChaCha20Poly1305</List.Item>
+            </List>
+          </Alert>
+        </Stack>
+      </Paper>
+    </Container>
   );
 } 

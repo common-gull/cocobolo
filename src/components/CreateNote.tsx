@@ -1,7 +1,26 @@
 import { useState, useCallback } from 'react';
+import { 
+  Container, 
+  Paper, 
+  Title, 
+  Text, 
+  TextInput, 
+  Textarea, 
+  Button, 
+  Group, 
+  Stack, 
+  Alert, 
+  Box,
+  Divider,
+  Progress
+} from '@mantine/core';
+import { 
+  IconAlertTriangle, 
+  IconFileText,
+  IconCheck
+} from '@tabler/icons-react';
 import { api } from '../utils/api';
 import type { CreateNoteResult } from '../types';
-import './CreateNote.css';
 
 interface CreateNoteProps {
   vaultPath: string;
@@ -111,132 +130,145 @@ export function CreateNote({ vaultPath, sessionId, onNoteCreated, onCancel }: Cr
   };
 
   const titleValidation = getTitleValidationStatus();
+  const titleLength = state.title.length;
+  const titleProgress = (titleLength / 200) * 100;
 
   return (
-    <div className="create-note">
-      <div className="header">
-        <h2>Create New Note</h2>
-        <p>Add a new note to your encrypted vault</p>
-      </div>
+    <Container size="md" py="xl">
+      <Paper p="xl" radius="lg" shadow="md">
+        <Stack gap="xl">
+          {/* Header */}
+          <Box>
+            <Title order={2} mb="xs">
+              <Group gap="sm">
+                <IconFileText size={24} />
+                Create New Note
+              </Group>
+            </Title>
+            <Text c="dimmed" size="lg">
+              Add a new note to your encrypted vault
+            </Text>
+          </Box>
 
-      <div className="form-section">
-        <div className="form-group">
-          <label htmlFor="note-title">Title *</label>
-          <input
-            id="note-title"
-            type="text"
-            value={state.title}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Enter note title"
-            disabled={state.isCreating}
-            className={`form-input ${titleValidation && !titleValidation.valid ? 'invalid' : ''}`}
-            autoFocus
-            maxLength={250} // Allow a bit more for better UX, but validate at 200
-          />
-          {titleValidation && !titleValidation.valid && (
-            <div className="validation-error">
-              <span className="icon icon-warning"></span>
-              <span>{titleValidation.message}</span>
-            </div>
+          <Divider />
+
+          {/* Form Section */}
+          <Stack gap="lg">
+            <Box>
+              <TextInput
+                label="Title"
+                placeholder="Enter note title"
+                value={state.title}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                onKeyDown={handleKeyPress}
+                disabled={state.isCreating}
+                error={titleValidation && !titleValidation.valid ? titleValidation.message : undefined}
+                size="md"
+                required
+                autoFocus
+                maxLength={250}
+              />
+              
+              {/* Character count and progress */}
+              <Group justify="space-between" mt="xs">
+                <Text size="xs" c="dimmed">
+                  {titleLength}/200 characters
+                </Text>
+                {titleLength > 0 && (
+                  <Text size="xs" c={titleLength > 200 ? 'red' : 'dimmed'}>
+                    {titleLength > 200 ? 'Too long' : 'Good'}
+                  </Text>
+                )}
+              </Group>
+              
+              {titleLength > 0 && (
+                <Progress 
+                  value={Math.min(titleProgress, 100)} 
+                  color={titleLength > 200 ? 'red' : titleLength > 150 ? 'orange' : 'blue'}
+                  size="xs" 
+                  mt="xs"
+                />
+              )}
+            </Box>
+
+            <Textarea
+              label="Content"
+              placeholder="Start writing your note..."
+              value={state.content}
+              onChange={(e) => handleContentChange(e.target.value)}
+              disabled={state.isCreating}
+              size="md"
+              minRows={8}
+              maxRows={15}
+              autosize
+            />
+
+            <TextInput
+              label="Tags"
+              placeholder="tag1, tag2, tag3"
+              value={state.tags}
+              onChange={(e) => handleTagsChange(e.target.value)}
+              disabled={state.isCreating}
+              size="md"
+              description="Separate tags with commas"
+            />
+
+            <TextInput
+              label="Folder Path"
+              placeholder="folder/subfolder"
+              value={state.folderPath}
+              onChange={(e) => handleFolderPathChange(e.target.value)}
+              disabled={state.isCreating}
+              size="md"
+              description="Optional folder path to organize your note"
+            />
+          </Stack>
+
+          {/* Error Display */}
+          {state.error && (
+            <Alert
+              icon={<IconAlertTriangle size={16} />}
+              title="Error"
+              color="red"
+              variant="light"
+            >
+              {state.error}
+            </Alert>
           )}
-          <div className="character-count">
-            {state.title.length}/200
-          </div>
-        </div>
 
-        <div className="form-group">
-          <label htmlFor="note-content">Content</label>
-          <textarea
-            id="note-content"
-            value={state.content}
-            onChange={(e) => handleContentChange(e.target.value)}
-            placeholder="Start writing your note..."
-            disabled={state.isCreating}
-            className="form-textarea"
-            rows={10}
-          />
-        </div>
+          <Divider />
 
-        <div className="form-group">
-          <label htmlFor="note-tags">Tags</label>
-          <input
-            id="note-tags"
-            type="text"
-            value={state.tags}
-            onChange={(e) => handleTagsChange(e.target.value)}
-            placeholder="tag1, tag2, tag3"
-            disabled={state.isCreating}
-            className="form-input"
-          />
-          <div className="form-help">
-            Separate tags with commas
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="note-folder">Folder Path</label>
-          <input
-            id="note-folder"
-            type="text"
-            value={state.folderPath}
-            onChange={(e) => handleFolderPathChange(e.target.value)}
-            placeholder="folder/subfolder"
-            disabled={state.isCreating}
-            className="form-input"
-          />
-          <div className="form-help">
-            Optional folder path to organize your note
-          </div>
-        </div>
-      </div>
-
-      {state.error && (
-        <div className="error-message">
-          <span className="icon icon-warning"></span>
-          <span>{state.error}</span>
-        </div>
-      )}
-
-      <div className="form-actions">
-        {onCancel && (
-          <button 
-            className="cancel-button secondary"
-            onClick={onCancel}
-            disabled={state.isCreating}
-          >
-            Cancel
-          </button>
-        )}
-        
-        <button 
-          className="create-button primary"
-          onClick={handleCreateNote}
-          disabled={!canCreateNote()}
-        >
-          {state.isCreating ? (
-            <>
-              <div className="spinner small"></div>
-              Creating Note...
-            </>
-          ) : (
-            <>
-              <span className="icon icon-file"></span>
-              Create Note
-            </>
-          )}
-        </button>
-      </div>
-
-      <div className="keyboard-shortcuts">
-        <h3>
-          <span className="icon icon-keyboard"></span> Keyboard Shortcuts
-        </h3>
-        <ul>
-          <li><kbd>Ctrl/Cmd + Enter</kbd> - Create note</li>
-          <li><kbd>Escape</kbd> - Cancel (if available)</li>
-        </ul>
-      </div>
-    </div>
+          {/* Form Actions */}
+          <Group justify="space-between">
+            <Text size="sm" c="dimmed">
+              Press Ctrl+Enter to create quickly
+            </Text>
+            
+            <Group gap="md">
+              {onCancel && (
+                <Button
+                  variant="light"
+                  onClick={onCancel}
+                  disabled={state.isCreating}
+                  size="md"
+                >
+                  Cancel
+                </Button>
+              )}
+              
+              <Button
+                leftSection={<IconCheck size={16} />}
+                onClick={handleCreateNote}
+                disabled={!canCreateNote()}
+                loading={state.isCreating}
+                size="md"
+              >
+                {state.isCreating ? 'Creating Note...' : 'Create Note'}
+              </Button>
+            </Group>
+          </Group>
+        </Stack>
+      </Paper>
+    </Container>
   );
 } 

@@ -1,8 +1,26 @@
 import { ReactNode, useState } from 'react';
+import { 
+  AppShell, 
+  Group, 
+  Title, 
+  Button, 
+  ActionIcon, 
+  Badge, 
+  Text, 
+  Stack, 
+  Box,
+  Burger,
+  Tooltip
+} from '@mantine/core';
+import { 
+  IconLock, 
+  IconSun, 
+  IconMoon, 
+  IconDeviceDesktop, 
+  IconLogout 
+} from '@tabler/icons-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { TreeNotesList } from '../NotesList';
-import { Icons } from '../Icons';
-import './MainLayout.css';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -41,13 +59,13 @@ export function MainLayout({
   const getThemeIcon = () => {
     switch (theme) {
       case 'light':
-        return <Icons.sun size="sm" />;
+        return <IconSun size={16} />;
       case 'dark':
-        return <Icons.moon size="sm" />;
+        return <IconMoon size={16} />;
       case 'system':
-        return <Icons.monitor size="sm" />;
+        return <IconDeviceDesktop size={16} />;
       default:
-        return <Icons.monitor size="sm" />;
+        return <IconDeviceDesktop size={16} />;
     }
   };
 
@@ -64,8 +82,6 @@ export function MainLayout({
     }
   };
 
-
-
   const handleCreateNote = () => {
     if (onCreateNote) {
       onCreateNote();
@@ -73,110 +89,113 @@ export function MainLayout({
   };
 
   return (
-    <div className="main-layout">
+    <AppShell
+      header={{ height: 60 }}
+      navbar={showSidebar ? { 
+        width: sidebarCollapsed ? 60 : 300, 
+        breakpoint: 'sm',
+        collapsed: { mobile: sidebarCollapsed }
+      } : { width: 0, breakpoint: 'sm' }}
+      padding="md"
+    >
       {/* Header */}
-      <header className="layout-header">
-        <div className="header-left">
-          {showSidebar && (
-            <button
-              className="sidebar-toggle"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              <Icons.menu size="sm" />
-            </button>
-          )}
-          
-          <div className="app-title">
-            <Icons.lock size="sm" />
-            <h1>Cocobolo</h1>
-          </div>
-        </div>
-
-        <div className="header-center">
-          {vaultInfo && (
-            <div className="vault-status">
-              <span className="vault-name">{vaultInfo.name}</span>
-              {vaultInfo.isEncrypted && (
-                <span className="encryption-badge">
-                  <Icons.lock size="xs" />
-                  Encrypted
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="header-right">
-          <div className="theme-selector">
-            <button
-              className="theme-toggle"
-              onClick={() => {
-                const themes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system'];
-                const currentIndex = themes.indexOf(theme);
-                const nextIndex = (currentIndex + 1) % themes.length;
-                const nextTheme = themes[nextIndex];
-                if (nextTheme) {
-                  handleThemeChange(nextTheme);
-                }
-              }}
-              aria-label={`Current theme: ${getThemeLabel()}. Click to change.`}
-              title={`Theme: ${getThemeLabel()}`}
-            >
-              {getThemeIcon()}
-            </button>
-          </div>
-
-          {sessionId && onLogout && (
-            <button className="logout-button" onClick={onLogout}>
-              <Icons.logout size="sm" />
-              Logout
-            </button>
-          )}
-        </div>
-      </header>
-
-      <div className="layout-body">
-        {/* Sidebar */}
-        {showSidebar && (
-          <aside className={`layout-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
-            {!sidebarCollapsed && (
-              <>
-
-
-                {/* File Explorer Style Notes Tree */}
-                {vaultPath && sessionId && (
-                  <div className="notes-tree-section">
-                    <TreeNotesList
-                      vaultPath={vaultPath}
-                      sessionId={sessionId}
-                      {...(selectedNoteId && { selectedNoteId })}
-                      {...(onSelectNote && { onSelectNote })}
-                      onCreateNote={handleCreateNote}
-                    />
-                  </div>
-                )}
-
-                {/* Session Info Footer */}
-                {sessionId && (
-                  <div className="sidebar-footer">
-                    <div className="session-info">
-                      <h4>Session</h4>
-                      <p>ID: {sessionId.substring(0, 8)}...</p>
-                      <p>Status: Active</p>
-                    </div>
-                  </div>
-                )}
-              </>
+      <AppShell.Header>
+        <Group h="100%" px="md" justify="space-between">
+          <Group>
+            {showSidebar && (
+              <Burger
+                opened={!sidebarCollapsed}
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                size="sm"
+              />
             )}
-          </aside>
-        )}
+            
+            <Group gap="sm">
+              <IconLock size={20} />
+              <Title order={3}>Cocobolo</Title>
+            </Group>
+          </Group>
 
-        {/* Main Content */}
-        <main className={`layout-content ${showSidebar ? (sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded') : 'no-sidebar'}`}>
-          {children}
-        </main>
-      </div>
-    </div>
+          <Group>
+            {vaultInfo && (
+              <Group gap="sm">
+                <Text fw={500}>{vaultInfo.name}</Text>
+                {vaultInfo.isEncrypted && (
+                  <Badge leftSection={<IconLock size={12} />} variant="light" color="blue" size="sm">
+                    Encrypted
+                  </Badge>
+                )}
+              </Group>
+            )}
+          </Group>
+
+          <Group gap="sm">
+            <Tooltip label={`Theme: ${getThemeLabel()}`}>
+              <ActionIcon
+                variant="light"
+                onClick={() => {
+                  const themes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system'];
+                  const currentIndex = themes.indexOf(theme);
+                  const nextIndex = (currentIndex + 1) % themes.length;
+                  const nextTheme = themes[nextIndex];
+                  if (nextTheme) {
+                    handleThemeChange(nextTheme);
+                  }
+                }}
+              >
+                {getThemeIcon()}
+              </ActionIcon>
+            </Tooltip>
+
+            {sessionId && onLogout && (
+              <Button
+                variant="light"
+                leftSection={<IconLogout size={16} />}
+                onClick={onLogout}
+                size="sm"
+              >
+                Logout
+              </Button>
+            )}
+          </Group>
+        </Group>
+      </AppShell.Header>
+
+      {/* Sidebar */}
+      {showSidebar && (
+        <AppShell.Navbar p="md">
+          {!sidebarCollapsed && (
+            <Stack gap="md" h="100%">
+              {/* File Explorer Style Notes Tree */}
+              {vaultPath && sessionId && (
+                <Box style={{ flex: 1 }}>
+                  <TreeNotesList
+                    vaultPath={vaultPath}
+                    sessionId={sessionId}
+                    {...(selectedNoteId && { selectedNoteId })}
+                    {...(onSelectNote && { onSelectNote })}
+                    onCreateNote={handleCreateNote}
+                  />
+                </Box>
+              )}
+
+              {/* Session Info Footer */}
+              {sessionId && (
+                <Box>
+                  <Text size="sm" fw={500} mb="xs">Session</Text>
+                  <Text size="xs" c="dimmed">ID: {sessionId.substring(0, 8)}...</Text>
+                  <Text size="xs" c="dimmed">Status: Active</Text>
+                </Box>
+              )}
+            </Stack>
+          )}
+        </AppShell.Navbar>
+      )}
+
+      {/* Main Content */}
+      <AppShell.Main>
+        {children}
+      </AppShell.Main>
+    </AppShell>
   );
 } 
