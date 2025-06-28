@@ -7,6 +7,7 @@ import {
   IconSearch,
   IconX,
   IconChevronRight,
+  IconDots,
   
   // Files & Folders
   IconFile,
@@ -36,6 +37,7 @@ import {
   
   // Content & Editor
   IconBulb,
+  IconTrash,
   
 } from '@tabler/icons-react';
 
@@ -87,6 +89,7 @@ export const Icons = {
   search: createIcon(IconSearch),
   x: createIcon(IconX),
   chevronRight: createIcon(IconChevronRight),
+  dots: createIcon(IconDots),
   
   // Files & Folders
   file: createIcon(IconFile),
@@ -116,6 +119,7 @@ export const Icons = {
   
   // Content & Editor
   lightbulb: createIcon(IconBulb),
+  trash: createIcon(IconTrash),
 } as const;
 
 export type IconName = keyof typeof Icons; 

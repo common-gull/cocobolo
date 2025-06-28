@@ -9,7 +9,9 @@ import { Extension } from '@codemirror/state';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import debounce from 'lodash.debounce';
+import { Menu, Button, Modal, Text, Group, ActionIcon } from '@mantine/core';
 import { api } from '../utils/api';
+import { Icons } from './Icons';
 import type { Note, SaveNoteResult } from '../types';
 import './MarkdownEditor.css';
 
@@ -219,46 +221,99 @@ const MarkdownEditorCore: React.FC<MarkdownEditorCoreProps> = React.memo(({
   return prevProps.noteId === nextProps.noteId;
 });
 
-// Controls component - handles title and status
+// Controls component - handles title and context menu
 interface EditorControlsProps {
   title: string;
   titleError: string;
-  noteCreatedAt: string;
-  noteUpdatedAt: string;
   onTitleChange: (title: string) => void;
+  onDeleteNote: () => void;
 }
 
 const EditorControls: React.FC<EditorControlsProps> = ({
   title,
   titleError,
-  noteCreatedAt,
-  noteUpdatedAt,
-  onTitleChange
+  onTitleChange,
+  onDeleteNote
 }) => {
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onTitleChange(e.target.value);
   };
 
+  const handleDeleteClick = () => {
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    setDeleteModalOpen(false);
+    onDeleteNote();
+  };
+
   return (
-    <div className="editor-header">
-      <div className="editor-title-section">
-        <div className="title-with-info">
-          <input
-            type="text"
-            value={title}
-            onChange={handleTitleChange}
-            className={`editor-title-input ${titleError ? 'error' : ''}`}
-            placeholder="Note title..."
-            maxLength={200}
-          />
-          <div className="note-info-inline">
-            <span>Created: {new Date(noteCreatedAt).toLocaleDateString()}</span>
-            <span>Updated: {new Date(noteUpdatedAt).toLocaleDateString()}</span>
+    <>
+      <div className="editor-header">
+        <div className="editor-title-section">
+          <div className="title-with-menu">
+            <input
+              type="text"
+              value={title}
+              onChange={handleTitleChange}
+              className={`editor-title-input ${titleError ? 'error' : ''}`}
+              placeholder="Note title..."
+              maxLength={200}
+            />
+            <Menu shadow="md" width={200}>
+              <Menu.Target>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="lg"
+                  className="context-menu-trigger"
+                >
+                  <Icons.dots size="md" />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  color="red"
+                  leftSection={<Icons.trash size="sm" />}
+                  onClick={handleDeleteClick}
+                >
+                  Delete Note
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
           </div>
+          {titleError && <div className="title-error">{titleError}</div>}
         </div>
-        {titleError && <div className="title-error">{titleError}</div>}
       </div>
-    </div>
+
+      <Modal
+        opened={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title="Delete Note"
+        centered
+      >
+        <Text size="sm" mb="md">
+          Are you sure you want to delete this note? This action cannot be undone.
+        </Text>
+        <Group justify="flex-end">
+          <Button
+            variant="default"
+            onClick={() => setDeleteModalOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="red"
+            onClick={handleConfirmDelete}
+          >
+            Delete
+          </Button>
+        </Group>
+      </Modal>
+    </>
   );
 };
 
@@ -270,6 +325,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   isDarkMode,
   onError,
   onNoteUpdated,
+  onNoteDeleted,
 }) => {
   const [title, setTitle] = useState(note.title);
   const [titleError, setTitleError] = useState('');
@@ -388,14 +444,27 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     debouncedAutoSave();
   }, [debouncedAutoSave]);
 
+  // Handle note deletion
+  const handleDeleteNote = useCallback(async () => {
+    try {
+      const success = await api.deleteNote(vaultPath, sessionId, note.id);
+      if (success && onNoteDeleted) {
+        await onNoteDeleted(note.id);
+      } else if (!success) {
+        onError('Failed to delete note');
+      }
+    } catch (error) {
+      onError(`Failed to delete note: ${error}`);
+    }
+  }, [vaultPath, sessionId, note.id, onNoteDeleted, onError]);
+
   return (
     <div className="markdown-editor">
       <EditorControls
         title={title}
         titleError={titleError}
-        noteCreatedAt={note.created_at}
-        noteUpdatedAt={note.updated_at}
         onTitleChange={handleTitleChange}
+        onDeleteNote={handleDeleteNote}
       />
       
       <MarkdownEditorCore

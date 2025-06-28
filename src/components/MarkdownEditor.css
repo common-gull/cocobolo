@@ -23,10 +23,19 @@
   gap: 8px;
 }
 
-.title-with-info {
+.title-with-menu {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.context-menu-trigger {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.context-menu-trigger:hover {
+  opacity: 1;
 }
 
 .editor-title-input {
@@ -227,14 +236,7 @@
   white-space: nowrap;
 }
 
-.note-info-inline {
-  display: flex;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
+
 
 .editor-content {
   flex: 1;
@@ -334,17 +336,13 @@
     padding: 12px 16px;
   }
   
-  .title-with-info {
-    flex-direction: column;
-    align-items: stretch;
+  .title-with-menu {
+    flex-direction: row;
+    align-items: center;
     gap: 8px;
   }
   
-  .note-info-inline {
-    justify-content: center;
-    gap: 8px;
-    font-size: 11px;
-  }
+
   
   .editor-footer {
     flex-direction: column;
