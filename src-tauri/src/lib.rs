@@ -318,7 +318,7 @@ async fn check_session_status(session_id: String) -> Result<bool, AppError> {
 async fn create_note(
     vault_path: String,
     session_id: String,
-    title: String,
+    title: Option<String>,
     content: Option<String>,
     tags: Option<Vec<String>>,
     folder_path: Option<String>
@@ -360,6 +360,17 @@ async fn get_notes_list(
 }
 
 #[tauri::command]
+async fn get_folders_list(
+    vault_path: String,
+    session_id: String
+) -> Result<Vec<String>, AppError> {
+    let path_buf = std::path::PathBuf::from(&vault_path);
+    let vault_manager = VaultManager::new(&path_buf);
+    
+    Ok(vault_manager.get_folders_list(&session_id)?)
+}
+
+#[tauri::command]
 async fn load_note(
     vault_path: String,
     session_id: String,
@@ -369,6 +380,17 @@ async fn load_note(
     let vault_manager = VaultManager::new(&path_buf);
     
     Ok(vault_manager.load_note(&session_id, &note_id)?)
+}
+
+#[tauri::command]
+async fn create_folder(
+    vault_path: String,
+    session_id: String,
+    folder_path: String
+) -> Result<(), AppError> {
+    let vault_manager = VaultManager::new(&vault_path);
+    vault_manager.create_folder(&session_id, folder_path)?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -407,6 +429,21 @@ async fn save_note(
     }
 }
 
+#[tauri::command]
+async fn delete_note(
+    vault_path: String,
+    session_id: String,
+    note_id: String
+) -> Result<bool, AppError> {
+    let path_buf = std::path::PathBuf::from(&vault_path);
+    let vault_manager = VaultManager::new(&path_buf);
+    
+    match vault_manager.delete_note(&session_id, &note_id) {
+        Ok(_) => Ok(true),
+        Err(_) => Ok(false), // Return false instead of error for simpler handling
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -430,9 +467,12 @@ pub fn run() {
             close_vault_session,
             check_session_status,
             create_note,
+            create_folder,
             get_notes_list,
+            get_folders_list,
             load_note,
-            save_note
+            save_note,
+            delete_note
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

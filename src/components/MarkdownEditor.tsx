@@ -20,6 +20,8 @@ interface MarkdownEditorProps {
   isDarkMode: boolean;
   onClose: () => void;
   onError: (error: string) => void;
+  onNoteUpdated?: (note: Note) => void;
+  onNoteDeleted?: (noteId: string) => Promise<void>;
 }
 
 interface MarkdownEditorCoreProps {
@@ -217,40 +219,30 @@ const MarkdownEditorCore: React.FC<MarkdownEditorCoreProps> = React.memo(({
   return prevProps.noteId === nextProps.noteId;
 });
 
-// Controls component - handles title, tags, status, buttons
+// Controls component - handles title and status
 interface EditorControlsProps {
   title: string;
-  tags: string;
   titleError: string;
   noteCreatedAt: string;
   noteUpdatedAt: string;
   onTitleChange: (title: string) => void;
-  onTagsChange: (tags: string) => void;
-  onClose: () => void;
 }
 
 const EditorControls: React.FC<EditorControlsProps> = ({
   title,
-  tags,
   titleError,
   noteCreatedAt,
   noteUpdatedAt,
-  onTitleChange,
-  onTagsChange,
-  onClose
+  onTitleChange
 }) => {
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onTitleChange(e.target.value);
   };
 
-  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onTagsChange(e.target.value);
-  };
-
   return (
-    <>
-      <div className="editor-header">
-        <div className="editor-title-section">
+    <div className="editor-header">
+      <div className="editor-title-section">
+        <div className="title-with-info">
           <input
             type="text"
             value={title}
@@ -259,47 +251,14 @@ const EditorControls: React.FC<EditorControlsProps> = ({
             placeholder="Note title..."
             maxLength={200}
           />
-          {titleError && <div className="title-error">{titleError}</div>}
-        </div>
-        
-        <div className="editor-controls">
-          <div className="editor-status">
-          </div>
-          
-          <div className="editor-buttons">
-            <button
-              type="button"
-              onClick={onClose}
-              className="close-button"
-              title="Close Editor"
-            >
-              ✕
-            </button>
+          <div className="note-info-inline">
+            <span>Created: {new Date(noteCreatedAt).toLocaleDateString()}</span>
+            <span>Updated: {new Date(noteUpdatedAt).toLocaleDateString()}</span>
           </div>
         </div>
+        {titleError && <div className="title-error">{titleError}</div>}
       </div>
-
-      <div className="editor-meta">
-        <div className="tags-section">
-          <label htmlFor="note-tags">Tags:</label>
-          <input
-            id="note-tags"
-            type="text"
-            value={tags}
-            onChange={handleTagsChange}
-            placeholder="tag1, tag2, tag3..."
-            className="tags-input"
-          />
-        </div>
-        
-        <div className="note-info">
-          <span>Created: {new Date(noteCreatedAt).toLocaleDateString()}</span>
-          <span>Updated: {new Date(noteUpdatedAt).toLocaleDateString()}</span>
-        </div>
-      </div>
-
-
-    </>
+    </div>
   );
 };
 
@@ -310,15 +269,17 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   sessionId,
   isDarkMode,
   onClose,
-  onError
+  onError,
+  onNoteUpdated,
+  onNoteDeleted
 }) => {
   const [title, setTitle] = useState(note.title);
-  const [tags, setTags] = useState(note.tags.join(', '));
   const [titleError, setTitleError] = useState('');
   
   // Refs for auto-save operations - no UI state for content changes
   const originalNoteRef = useRef(note);
   const contentRef = useRef(note.content);
+  const titleRef = useRef(note.title);
   const savingRef = useRef(false);
 
   // Update refs when note changes from outside (switching notes)
@@ -327,7 +288,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       // Completely new note
       originalNoteRef.current = note;
       setTitle(note.title);
-      setTags(note.tags.join(', '));
+      titleRef.current = note.title;
       contentRef.current = note.content;
     }
   }, [note]);
@@ -338,38 +299,54 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     
     // Check if we have actual changes
     const original = originalNoteRef.current;
-    const currentTags = tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    const currentTitle = titleRef.current;
+    const currentContent = contentRef.current;
     
     const hasChanges = 
-      title !== original.title ||
-      contentRef.current !== original.content ||
-      JSON.stringify(currentTags.sort()) !== JSON.stringify(original.tags.sort());
+      currentTitle !== original.title ||
+      currentContent !== original.content;
     
     if (!hasChanges) return;
     
     // Validate title silently
-    const trimmedTitle = title.trim();
-    if (!trimmedTitle || trimmedTitle.length > 200) return;
+    const trimmedTitle = currentTitle.trim();
+    const trimmedContent = currentContent.trim();
+    
+    // Don't save if both title and content are empty/default
+    if ((!trimmedTitle || trimmedTitle === 'Untitled') && !trimmedContent) {
+      return;
+    }
+    
+    if (trimmedTitle.length > 200) return;
 
     savingRef.current = true;
     
     try {
-      const currentContent = contentRef.current;
-      
       const result: SaveNoteResult = await api.saveNote(
         vaultPath,
         sessionId,
         note.id,
         trimmedTitle,
-        currentContent,
-        currentTags,
+        trimmedContent,
+        note.tags, // Keep existing tags
         note.folder_path
       );
 
       if (result.success && result.note) {
-        // Silently update the original note reference
+        // Update all refs with the saved note data
         originalNoteRef.current = result.note;
-        // No need to call onNoteUpdated - we already know the current note!
+        titleRef.current = result.note.title;
+        contentRef.current = result.note.content;
+        
+        // Update UI state if the title changed on the server
+        if (result.note.title !== title) {
+          setTitle(result.note.title);
+        }
+        
+        // Notify parent about the update
+        if (onNoteUpdated) {
+          onNoteUpdated(result.note);
+        }
       } else {
         // Only show errors, never success notifications
         onError(result.error_message || 'Failed to save note');
@@ -379,7 +356,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     } finally {
       savingRef.current = false;
     }
-  }, [title, tags, note.id, note.folder_path, vaultPath, sessionId, onError]);
+  }, [note.id, note.folder_path, note.tags, vaultPath, sessionId, onError, onNoteUpdated, title]);
 
   // Debounced auto-save - completely silent
   const debouncedAutoSave = useMemo(
@@ -399,6 +376,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   // Handle title changes - only update state for title validation
   const handleTitleChange = useCallback((newTitle: string) => {
     setTitle(newTitle);
+    titleRef.current = newTitle; // Keep ref in sync immediately
     
     if (newTitle.trim().length === 0) {
       setTitleError('Title cannot be empty');
@@ -412,19 +390,25 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     debouncedAutoSave();
   }, [debouncedAutoSave]);
 
-  // Handle tags changes
-  const handleTagsChange = useCallback((newTags: string) => {
-    setTags(newTags);
-    
-    // Trigger auto-save for tag changes
-    debouncedAutoSave();
-  }, [debouncedAutoSave]);
 
-  // Handle close - no unsaved changes warning since everything auto-saves
-  const handleClose = useCallback(() => {
+
+  // Handle close - check if we should delete empty notes
+  const handleClose = useCallback(async () => {
     debouncedAutoSave.cancel();
+    
+    // Check if this is an empty note that should be deleted
+    const currentTitle = titleRef.current.trim();
+    const currentContent = contentRef.current.trim();
+    
+    const isEmpty = (!currentTitle || currentTitle === 'Untitled') && !currentContent;
+    
+    if (isEmpty && onNoteDeleted) {
+      // Delete the empty note using the callback
+      await onNoteDeleted(note.id);
+    }
+    
     onClose();
-  }, [debouncedAutoSave, onClose]);
+  }, [debouncedAutoSave, onClose, note.id, onNoteDeleted]);
 
 
 
@@ -432,13 +416,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     <div className="markdown-editor">
       <EditorControls
         title={title}
-        tags={tags}
         titleError={titleError}
         noteCreatedAt={note.created_at}
         noteUpdatedAt={note.updated_at}
         onTitleChange={handleTitleChange}
-        onTagsChange={handleTagsChange}
-        onClose={handleClose}
       />
       
       <MarkdownEditorCore

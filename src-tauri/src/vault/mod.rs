@@ -136,10 +136,31 @@ impl From<&Note> for NoteMetadata {
     }
 }
 
-/// Notes index containing metadata for all notes
+/// Folder metadata for virtual folders
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct FolderMetadata {
+    pub path: String,
+    pub name: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+impl FolderMetadata {
+    pub fn new(path: String) -> Self {
+        let name = path.split('/').last().unwrap_or(&path).to_string();
+        Self {
+            path,
+            name,
+            created_at: chrono::Utc::now(),
+        }
+    }
+}
+
+/// Notes index containing metadata for all notes and folders
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NotesIndex {
     pub notes: Vec<NoteMetadata>,
+    #[serde(default)]
+    pub folders: Vec<FolderMetadata>,
     pub last_updated: chrono::DateTime<chrono::Utc>,
 }
 
@@ -147,6 +168,7 @@ impl NotesIndex {
     pub fn new() -> Self {
         Self {
             notes: Vec::new(),
+            folders: Vec::new(),
             last_updated: chrono::Utc::now(),
         }
     }
@@ -167,6 +189,57 @@ impl NotesIndex {
     pub fn remove_note(&mut self, note_id: &str) {
         self.notes.retain(|n| n.id != note_id);
         self.last_updated = chrono::Utc::now();
+    }
+
+    pub fn add_folder(&mut self, folder_path: String) -> Result<(), String> {
+        // Validate folder path
+        if folder_path.is_empty() {
+            return Err("Folder path cannot be empty".to_string());
+        }
+
+        // Check if folder already exists
+        if self.folders.iter().any(|f| f.path == folder_path) {
+            return Err("Folder already exists".to_string());
+        }
+
+        // Ensure parent folders exist
+        let parts: Vec<&str> = folder_path.split('/').collect();
+        for i in 1..parts.len() {
+            let parent_path = parts[0..i].join("/");
+            if !self.folders.iter().any(|f| f.path == parent_path) {
+                self.folders.push(FolderMetadata::new(parent_path));
+            }
+        }
+
+        // Add the new folder
+        self.folders.push(FolderMetadata::new(folder_path));
+        self.last_updated = chrono::Utc::now();
+        Ok(())
+    }
+
+    pub fn remove_folder(&mut self, folder_path: &str) -> Result<(), String> {
+        // Check if any notes are in this folder or subfolders
+        let has_notes = self.notes.iter().any(|note| {
+            note.folder_path.as_ref()
+                .map(|path| path == folder_path || path.starts_with(&format!("{}/", folder_path)))
+                .unwrap_or(false)
+        });
+
+        if has_notes {
+            return Err("Cannot delete folder that contains notes".to_string());
+        }
+
+        // Remove folder and all subfolders
+        self.folders.retain(|f| {
+            f.path != folder_path && !f.path.starts_with(&format!("{}/", folder_path))
+        });
+
+        self.last_updated = chrono::Utc::now();
+        Ok(())
+    }
+
+    pub fn get_folders(&self) -> &[FolderMetadata] {
+        &self.folders
     }
 }
 
@@ -524,15 +597,20 @@ impl VaultManager {
     }
 
     /// Create a new note in the vault
-    pub fn create_note(&self, session_id: &str, title: String, content: Option<String>, tags: Option<Vec<String>>, folder_path: Option<String>) -> Result<Note, VaultError> {
-        // Validate title
-        let title = title.trim().to_string();
-        if title.is_empty() {
-            return Err(VaultError::InvalidNoteTitle("Title cannot be empty".to_string()));
-        }
-        if title.len() > 200 {
-            return Err(VaultError::InvalidNoteTitle("Title cannot exceed 200 characters".to_string()));
-        }
+    pub fn create_note(&self, session_id: &str, title: Option<String>, content: Option<String>, tags: Option<Vec<String>>, folder_path: Option<String>) -> Result<Note, VaultError> {
+        // Validate title if provided
+        let title = if let Some(title) = title {
+            let trimmed = title.trim().to_string();
+            if trimmed.is_empty() {
+                "Untitled".to_string()
+            } else if trimmed.len() > 200 {
+                return Err(VaultError::InvalidNoteTitle("Title cannot exceed 200 characters".to_string()));
+            } else {
+                trimmed
+            }
+        } else {
+            "Untitled".to_string()
+        };
 
         // Get session to ensure vault is unlocked
         let session = Self::get_session(session_id)
@@ -652,6 +730,15 @@ impl VaultManager {
         Ok(index.notes)
     }
 
+    /// Get all folder paths
+    pub fn get_folders_list(&self, session_id: &str) -> Result<Vec<String>, VaultError> {
+        let session = Self::get_session(session_id)
+            .ok_or_else(|| VaultError::InvalidPassword)?;
+
+        let index = self.load_notes_index(&session.encryption_key)?;
+        Ok(index.folders.iter().map(|f| f.path.clone()).collect())
+    }
+
     /// Load a specific note by ID
     pub fn load_note(&self, session_id: &str, note_id: &str) -> Result<Note, VaultError> {
         let session = Self::get_session(session_id)
@@ -690,6 +777,21 @@ impl VaultManager {
     }
 
     /// Save changes to an existing note
+    pub fn create_folder(&self, session_id: &str, folder_path: String) -> Result<(), VaultError> {
+        // Get session and encryption key
+        let session = Self::get_session(session_id)
+            .ok_or(VaultError::InvalidPassword)?;
+
+        // Update the notes index to add the folder
+        self.update_notes_index(&session.encryption_key, |index| {
+            if let Err(e) = index.add_folder(folder_path.clone()) {
+                eprintln!("Failed to add folder {}: {}", folder_path, e);
+            }
+        })?;
+
+        Ok(())
+    }
+
     pub fn save_note(
         &self, 
         session_id: &str, 
@@ -759,6 +861,27 @@ impl VaultManager {
         })?;
 
         Ok(note)
+    }
+
+    /// Delete a note from the vault
+    pub fn delete_note(&self, session_id: &str, note_id: &str) -> Result<(), VaultError> {
+        let session = Self::get_session(session_id)
+            .ok_or_else(|| VaultError::InvalidPassword)?;
+
+        // Remove the note file
+        let note_filename = format!("{}.note", note_id);
+        let note_file_path = self.vault_path.join("notes").join(&note_filename);
+
+        if note_file_path.exists() {
+            std::fs::remove_file(&note_file_path)?;
+        }
+
+        // Update notes index to remove the note
+        self.update_notes_index(&session.encryption_key, |index| {
+            index.remove_note(note_id);
+        })?;
+
+        Ok(())
     }
 }
 

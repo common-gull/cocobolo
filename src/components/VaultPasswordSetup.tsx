@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { api } from '../utils/api';
+
 import type { PasswordSetupState, VaultInfo } from '../types';
 import './VaultPasswordSetup.css';
 

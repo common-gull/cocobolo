@@ -164,7 +164,7 @@ export const api = {
   async createNote(
     vaultPath: string,
     sessionId: string,
-    title: string,
+    title?: string,
     content?: string,
     tags?: string[],
     folderPath?: string
@@ -183,6 +183,22 @@ export const api = {
     }
   },
 
+  async createFolder(
+    vaultPath: string,
+    sessionId: string,
+    folderPath: string
+  ): Promise<void> {
+    try {
+      await invoke<void>('create_folder', {
+        vaultPath,
+        sessionId,
+        folderPath
+      });
+    } catch (error) {
+      throw new ApiError('Failed to create folder', error);
+    }
+  },
+
   async getNotesList(
     vaultPath: string,
     sessionId: string
@@ -194,6 +210,20 @@ export const api = {
       });
     } catch (error) {
       throw new ApiError('Failed to get notes list', error);
+    }
+  },
+
+  async getFoldersList(
+    vaultPath: string,
+    sessionId: string
+  ): Promise<string[]> {
+    try {
+      return await invoke<string[]>('get_folders_list', {
+        vaultPath,
+        sessionId
+      });
+    } catch (error) {
+      throw new ApiError('Failed to get folders list', error);
     }
   },
 
@@ -234,6 +264,22 @@ export const api = {
       });
     } catch (error) {
       throw new ApiError('Failed to save note', error);
+    }
+  },
+
+  async deleteNote(
+    vaultPath: string,
+    sessionId: string,
+    noteId: string
+  ): Promise<boolean> {
+    try {
+      return await invoke<boolean>('delete_note', {
+        vaultPath,
+        sessionId,
+        noteId
+      });
+    } catch (error) {
+      throw new ApiError('Failed to delete note', error);
     }
   },
 }; 

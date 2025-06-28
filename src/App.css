@@ -7,10 +7,10 @@
 }
 
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
 }
 
 /* CSS Custom Properties for theming */
@@ -124,6 +124,14 @@
   box-sizing: border-box;
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
@@ -137,9 +145,11 @@ body {
 }
 
 .container {
-  min-height: 100vh;
-  padding: 2rem;
-  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  width: 100%;
+  height: 100vh;
+  padding: 0;
+  margin: 0;
+  background: var(--bg-primary);
 }
 
 .app-header {
@@ -264,28 +274,35 @@ body {
 
 /* Main App Content */
 .main-app-content {
-  padding: 2rem;
-  max-width: 1200px;
+  padding: 4rem 2rem;
+  max-width: 800px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  text-align: center;
 }
 
 .welcome-header {
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 0;
 }
 
 .welcome-header h2 {
   color: var(--text-primary);
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 700;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .welcome-header p {
   color: var(--text-secondary);
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   max-width: 600px;
   margin: 0 auto;
+  line-height: 1.6;
 }
 
 /* Dashboard Grid */
@@ -645,7 +662,7 @@ body {
 /* Responsive Design */
 @media (max-width: 768px) {
   .container {
-    padding: 1rem;
+    padding: 0;
   }
 
   .app-header h1 {
@@ -686,7 +703,7 @@ body {
 }
 
 /* High contrast mode */
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .vault-card,
   .demo-section,
   .welcome-section {
@@ -1305,6 +1322,40 @@ body {
   border-left: 0.1em solid currentColor;
 }
 
+/* Plus Icon */
+.icon-plus::before {
+  content: '';
+  position: absolute;
+  top: 0.45em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.1em;
+  background: currentColor;
+}
+
+.icon-plus::after {
+  content: '';
+  position: absolute;
+  top: 0.1em;
+  left: 0.45em;
+  width: 0.1em;
+  height: 0.8em;
+  background: currentColor;
+}
+
+/* Chevron Right Icon */
+.icon-chevron-right::before {
+  content: '';
+  position: absolute;
+  top: 0.3em;
+  left: 0.35em;
+  width: 0.3em;
+  height: 0.3em;
+  border-right: 0.1em solid currentColor;
+  border-bottom: 0.1em solid currentColor;
+  transform: rotate(-45deg);
+}
+
 /* Menu Icon - complete definition */
 .icon-menu::after {
   content: '';
@@ -1322,8 +1373,6 @@ body {
   background: currentColor;
   border-radius: 0 0 0.05em 0.05em;
 }
-
-
 
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {

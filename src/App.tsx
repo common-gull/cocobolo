@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
+import { Provider as JotaiProvider, useSetAtom } from 'jotai';
 import { api } from './utils/api';
 import { VaultLocationSelector } from './components/VaultLocationSelector';
 import { VaultPasswordSetup } from './components/VaultPasswordSetup';
 import { VaultUnlock } from './components/VaultUnlock';
-import { CreateNote } from './components/CreateNote';
-import { NotesList } from './components/NotesList';
+
 import { MarkdownEditor } from './components/MarkdownEditor';
 import { MainLayout } from './components/Layout/MainLayout';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
-import type { AppInfo, AppView, VaultSetupInfo, VaultInfo, Note } from './types';
+import { Icons } from './components/Icons';
+import { addNoteAtom } from './stores/notesStore';
+import { useNoteUpdates } from './hooks/useNoteUpdates';
+import type { AppInfo, AppView, VaultSetupInfo, VaultInfo, Note, NoteMetadata } from './types';
 import './App.css';
 
-function App() {
+function AppContent() {
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [vaultLocation, setVaultLocation] = useState<string | null>(null);
@@ -20,6 +23,10 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentNote, setCurrentNote] = useState<Note | null>(null);
+
+  // Jotai actions
+  const addNote = useSetAtom(addNoteAtom);
+  const { handleNoteUpdated, handleNoteDeleted } = useNoteUpdates();
 
   // Demo state
   const [greetInput, setGreetInput] = useState('');
@@ -36,9 +43,20 @@ function App() {
         vaultPath={vaultLocation}
         sessionId={sessionId}
         isDarkMode={effectiveTheme === 'dark'}
-        onClose={handleCloseEditor}
+                onClose={handleCloseEditor}
         onError={handleEditorError}
-      />
+        onNoteUpdated={handleNoteUpdated}
+        onNoteDeleted={async (noteId: string) => {
+          if (vaultLocation && sessionId) {
+            const success = await handleNoteDeleted(vaultLocation, sessionId, noteId);
+            if (success) {
+              // Navigate back to main view after deletion
+              setCurrentNote(null);
+              setCurrentView('main-app');
+            }
+          }
+        }}
+        />
     ) : null;
   };
 
@@ -183,22 +201,43 @@ function App() {
     }
   };
 
-  const handleCreateNote = () => {
-    setCurrentView('create-note');
+
+
+  const handleCreateNote = async () => {
+    if (!vaultLocation || !sessionId) {
+      setError('Vault not available');
+      return;
+    }
+
+    try {
+      // Create a new note with undefined title
+      const result = await api.createNote(vaultLocation, sessionId);
+      if (result.success && result.note) {
+        // Add note to Jotai store
+        const noteMetadata: NoteMetadata = {
+          id: result.note.id,
+          title: result.note.title,
+          content_preview: result.note.content.substring(0, 100),
+          created_at: result.note.created_at,
+          updated_at: result.note.updated_at,
+          tags: result.note.tags
+        };
+        if (result.note.folder_path) {
+          noteMetadata.folder_path = result.note.folder_path;
+        }
+        addNote(noteMetadata);
+        
+        setCurrentNote(result.note);
+        setCurrentView('edit-note');
+      } else {
+        setError(result.error_message || 'Failed to create note');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create note');
+    }
   };
 
-  const handleNoteCreated = (noteId: string) => {
-    console.log('Note created:', noteId);
-    setCurrentView('notes-list');
-  };
 
-  const handleCancelCreateNote = () => {
-    setCurrentView('main-app');
-  };
-
-  const handleViewNotes = () => {
-    setCurrentView('notes-list');
-  };
 
   const handleSelectNote = async (noteId: string) => {
     if (!vaultLocation || !sessionId) {
@@ -222,6 +261,10 @@ function App() {
 
   const handleEditorError = (errorMessage: string) => {
     setError(errorMessage);
+  };
+
+  const handleNavigate = (view: string) => {
+    setCurrentView(view as AppView);
   };
 
   if (loading) {
@@ -271,96 +314,19 @@ function App() {
           <div className="main-app-content">
             <div className="welcome-header">
               <h2>Welcome to your secure vault!</h2>
-              <p>Your vault is now unlocked and ready to use. Start creating and organizing your encrypted notes.</p>
-            </div>
-            
-            <div className="dashboard-grid">
-              <div className="dashboard-card">
-                <h3>
-                  <span className="icon icon-file"></span>
-                  Notes
-                </h3>
-                <p>Create, edit, and organize your encrypted notes.</p>
-                <div className="card-actions">
-                  <button className="card-action-button primary" onClick={handleCreateNote}>
-                    <span className="icon icon-file"></span>
-                    Create Note
-                  </button>
-                  <button className="card-action-button secondary" onClick={handleViewNotes}>
-                    <span className="icon icon-list"></span>
-                    View All Notes
-                  </button>
-                </div>
-              </div>
-              
-              <div className="dashboard-card">
-                <h3>
-                  <span className="icon icon-folder"></span>
-                  Organization
-                </h3>
-                <p>Organize your notes with folders and tags.</p>
-                <button className="card-action-button">
-                  <span className="icon icon-folder"></span>
-                  Manage Folders
-                </button>
-              </div>
-              
-              <div className="dashboard-card">
-                <h3>
-                  <span className="icon icon-search"></span>
-                  Search
-                </h3>
-                <p>Find your notes quickly with full-text search.</p>
-                <button className="card-action-button" onClick={handleViewNotes}>
-                  <span className="icon icon-search"></span>
-                  Search Notes
-                </button>
-              </div>
-            </div>
-            
-            <div className="session-info-card">
-              <h3>Session Information</h3>
-              <div className="info-grid">
-                <div className="info-item">
-                  <span className="label">Session ID:</span>
-                  <span className="value">{sessionId.substring(0, 8)}...</span>
-                </div>
-                <div className="info-item">
-                  <span className="label">Vault:</span>
-                  <span className="value">{vaultSetupInfo.vault_info.name}</span>
-                </div>
-                <div className="info-item">
-                  <span className="label">Encryption:</span>
-                  <span className="value">ChaCha20Poly1305</span>
-                </div>
-                <div className="info-item">
-                  <span className="label">Status:</span>
-                  <span className="value status-active">Active</span>
-                </div>
-              </div>
+              <p>Select a note from the sidebar to get started, or create a new note.</p>
             </div>
           </div>
         ) : null;
 
       case 'create-note':
-        return vaultLocation && sessionId ? (
-          <CreateNote
-            vaultPath={vaultLocation}
-            sessionId={sessionId}
-            onNoteCreated={handleNoteCreated}
-            onCancel={handleCancelCreateNote}
-          />
-        ) : null;
+        // This case is no longer used - notes are created directly in the editor
+        return null;
 
       case 'notes-list':
-        return vaultLocation && sessionId ? (
-          <NotesList
-            vaultPath={vaultLocation}
-            sessionId={sessionId}
-            onCreateNote={handleCreateNote}
-            onSelectNote={handleSelectNote}
-          />
-        ) : null;
+        // Redirect to main-app since we now use tree navigation in sidebar
+        setCurrentView('main-app');
+        return null;
       
       case 'home':
         return (
@@ -378,7 +344,7 @@ function App() {
                       <div className="vault-badges">
                         {vaultSetupInfo.is_encrypted && (
                           <span className="encryption-badge">
-                            <span className="icon icon-lock"></span>
+                            <Icons.lock size="xs" />
                             Encrypted
                           </span>
                         )}
@@ -395,7 +361,7 @@ function App() {
                         className="unlock-vault-button primary"
                         onClick={() => setCurrentView('vault-unlock')}
                       >
-                        <span className="icon icon-lock"></span>
+                        <Icons.lock size="sm" />
                         Unlock Vault
                       </button>
                     )}
@@ -450,7 +416,7 @@ function App() {
         <div className="container">
           <header className="app-header">
             <h1>
-              <span className="icon icon-lock"></span>
+              <Icons.lock size="lg" />
               Cocobolo
             </h1>
             <p>Secure Note-Taking Application</p>
@@ -480,11 +446,24 @@ function App() {
           }
         })}
         {...(sessionId && { sessionId })}
+        {...(vaultLocation && { vaultPath: vaultLocation })}
+        {...(currentNote?.id && { selectedNoteId: currentNote.id })}
         onLogout={handleLogout}
+        onSelectNote={handleSelectNote}
+        onCreateNote={handleCreateNote}
+        onNavigate={handleNavigate}
       >
         {renderContent()}
       </MainLayout>
     </ThemeProvider>
+  );
+}
+
+function App() {
+  return (
+    <JotaiProvider>
+      <AppContent />
+    </JotaiProvider>
   );
 }
 

@@ -1,5 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { TreeNotesList } from '../NotesList';
+import { Icons } from '../Icons';
 import './MainLayout.css';
 
 interface MainLayoutProps {
@@ -9,7 +11,12 @@ interface MainLayoutProps {
     isEncrypted: boolean;
   };
   sessionId?: string;
+  vaultPath?: string;
+  selectedNoteId?: string;
   onLogout?: () => void;
+  onSelectNote?: (noteId: string) => void;
+  onCreateNote?: () => void;
+  onNavigate?: (view: string) => void;
   showSidebar?: boolean;
 }
 
@@ -17,7 +24,12 @@ export function MainLayout({
   children, 
   vaultInfo, 
   sessionId, 
+  vaultPath,
+  selectedNoteId,
   onLogout,
+  onSelectNote,
+  onCreateNote,
+  onNavigate,
   showSidebar = true 
 }: MainLayoutProps) {
   const { theme, setTheme } = useTheme();
@@ -30,13 +42,13 @@ export function MainLayout({
   const getThemeIcon = () => {
     switch (theme) {
       case 'light':
-        return <span className="icon icon-sun"></span>;
+        return <Icons.sun size="sm" />;
       case 'dark':
-        return <span className="icon icon-moon"></span>;
+        return <Icons.moon size="sm" />;
       case 'system':
-        return <span className="icon icon-monitor"></span>;
+        return <Icons.monitor size="sm" />;
       default:
-        return <span className="icon icon-monitor"></span>;
+        return <Icons.monitor size="sm" />;
     }
   };
 
@@ -53,6 +65,14 @@ export function MainLayout({
     }
   };
 
+
+
+  const handleCreateNote = () => {
+    if (onCreateNote) {
+      onCreateNote();
+    }
+  };
+
   return (
     <div className="main-layout">
       {/* Header */}
@@ -64,12 +84,12 @@ export function MainLayout({
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              <span className="icon icon-menu"></span>
+              <Icons.menu size="sm" />
             </button>
           )}
           
           <div className="app-title">
-            <span className="icon icon-lock"></span>
+            <Icons.lock size="sm" />
             <h1>Cocobolo</h1>
           </div>
         </div>
@@ -80,7 +100,7 @@ export function MainLayout({
               <span className="vault-name">{vaultInfo.name}</span>
               {vaultInfo.isEncrypted && (
                 <span className="encryption-badge">
-                  <span className="icon icon-lock"></span>
+                  <Icons.lock size="xs" />
                   Encrypted
                 </span>
               )}
@@ -110,7 +130,7 @@ export function MainLayout({
 
           {sessionId && onLogout && (
             <button className="logout-button" onClick={onLogout}>
-              <span className="icon icon-logout"></span>
+              <Icons.logout size="sm" />
               Logout
             </button>
           )}
@@ -121,88 +141,34 @@ export function MainLayout({
         {/* Sidebar */}
         {showSidebar && (
           <aside className={`layout-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
-            <nav className="sidebar-nav">
-              <div className="nav-section">
-                <h3>Navigation</h3>
-                <ul>
-                  <li>
-                    <a href="#" className="nav-link active">
-                      <span className="icon icon-home"></span>
-                      <span className="nav-text">Dashboard</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="nav-link">
-                      <span className="icon icon-file"></span>
-                      <span className="nav-text">Notes</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="nav-link">
-                      <span className="icon icon-folder"></span>
-                      <span className="nav-text">Folders</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="nav-link">
-                      <span className="icon icon-search"></span>
-                      <span className="nav-text">Search</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
+            {!sidebarCollapsed && (
+              <>
 
-              <div className="nav-section">
-                <h3>Tools</h3>
-                <ul>
-                  <li>
-                    <a href="#" className="nav-link">
-                      <span className="icon icon-tag"></span>
-                      <span className="nav-text">Tags</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="nav-link">
-                      <span className="icon icon-history"></span>
-                      <span className="nav-text">Recent</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="nav-link">
-                      <span className="icon icon-trash"></span>
-                      <span className="nav-text">Trash</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
 
-              <div className="nav-section">
-                <h3>Settings</h3>
-                <ul>
-                  <li>
-                    <a href="#" className="nav-link">
-                      <span className="icon icon-settings"></span>
-                      <span className="nav-text">Preferences</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="nav-link">
-                      <span className="icon icon-backup"></span>
-                      <span className="nav-text">Backup</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-            </nav>
+                {/* File Explorer Style Notes Tree */}
+                {vaultPath && sessionId && (
+                  <div className="notes-tree-section">
+                    <TreeNotesList
+                      vaultPath={vaultPath}
+                      sessionId={sessionId}
+                      {...(selectedNoteId && { selectedNoteId })}
+                      {...(onSelectNote && { onSelectNote })}
+                      onCreateNote={handleCreateNote}
+                    />
+                  </div>
+                )}
 
-            {!sidebarCollapsed && sessionId && (
-              <div className="sidebar-footer">
-                <div className="session-info">
-                  <h4>Session</h4>
-                  <p>ID: {sessionId.substring(0, 8)}...</p>
-                  <p>Status: Active</p>
-                </div>
-              </div>
+                {/* Session Info Footer */}
+                {sessionId && (
+                  <div className="sidebar-footer">
+                    <div className="session-info">
+                      <h4>Session</h4>
+                      <p>ID: {sessionId.substring(0, 8)}...</p>
+                      <p>Status: Active</p>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </aside>
         )}
