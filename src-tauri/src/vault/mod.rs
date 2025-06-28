@@ -241,6 +241,56 @@ impl NotesIndex {
     pub fn get_folders(&self) -> &[FolderMetadata] {
         &self.folders
     }
+
+    pub fn move_note(&mut self, note_id: &str, new_folder_path: Option<String>) -> Result<(), String> {
+        // Find the note and update its folder path
+        if let Some(note) = self.notes.iter_mut().find(|n| n.id == note_id) {
+            note.folder_path = new_folder_path;
+            note.updated_at = chrono::Utc::now();
+            self.last_updated = chrono::Utc::now();
+            Ok(())
+        } else {
+            Err(format!("Note with ID {} not found", note_id))
+        }
+    }
+
+    pub fn move_folder(&mut self, old_path: &str, new_path: &str) -> Result<(), String> {
+        // Check if new path already exists
+        if self.folders.iter().any(|f| f.path == new_path) {
+            return Err("Destination folder already exists".to_string());
+        }
+
+        // Check if old path exists
+        if !self.folders.iter().any(|f| f.path == old_path) {
+            return Err("Source folder does not exist".to_string());
+        }
+
+        // Update folder paths
+        for folder in &mut self.folders {
+            if folder.path == old_path {
+                folder.path = new_path.to_string();
+                folder.name = new_path.split('/').last().unwrap_or(new_path).to_string();
+            } else if folder.path.starts_with(&format!("{}/", old_path)) {
+                folder.path = folder.path.replace(&format!("{}/", old_path), &format!("{}/", new_path));
+            }
+        }
+
+        // Update note folder paths
+        for note in &mut self.notes {
+            if let Some(ref folder_path) = note.folder_path {
+                if folder_path == old_path {
+                    note.folder_path = Some(new_path.to_string());
+                    note.updated_at = chrono::Utc::now();
+                } else if folder_path.starts_with(&format!("{}/", old_path)) {
+                    note.folder_path = Some(folder_path.replace(&format!("{}/", old_path), &format!("{}/", new_path)));
+                    note.updated_at = chrono::Utc::now();
+                }
+            }
+        }
+
+        self.last_updated = chrono::Utc::now();
+        Ok(())
+    }
 }
 
 /// Rate limiting state for vault unlock attempts
@@ -893,6 +943,69 @@ impl VaultManager {
         self.update_notes_index(&session.encryption_key, |index| {
             if let Err(e) = index.remove_folder(folder_path) {
                 eprintln!("Failed to remove folder {}: {}", folder_path, e);
+            }
+        })?;
+
+        Ok(())
+    }
+
+    /// Move a note to a different folder
+    pub fn move_note(&self, session_id: &str, note_id: &str, new_folder_path: Option<String>) -> Result<(), VaultError> {
+        let session = Self::get_session(session_id)
+            .ok_or_else(|| VaultError::InvalidPassword)?;
+
+        // Update notes index to move the note
+        self.update_notes_index(&session.encryption_key, |index| {
+            if let Err(e) = index.move_note(note_id, new_folder_path.clone()) {
+                eprintln!("Failed to move note {}: {}", note_id, e);
+            }
+        })?;
+
+        // Load the note and update its folder path directly
+        let mut note = self.load_note(session_id, note_id)?;
+        note.folder_path = new_folder_path;
+        note.updated_at = chrono::Utc::now();
+
+        // Encrypt and save the updated note
+        let session = Self::get_session(session_id)
+            .ok_or_else(|| VaultError::InvalidPassword)?;
+            
+        let note_content = serde_json::to_string_pretty(&note)?;
+        let (encrypted_content, nonce) = self.crypto_manager.encrypt_data(
+            note_content.as_bytes(),
+            &session.encryption_key
+        )?;
+
+        // Save encrypted note file
+        let note_filename = format!("{}.note", note.id);
+        let note_file_path = self.vault_path.join("notes").join(&note_filename);
+        
+        let note_file_data = serde_json::json!({
+            "nonce": base64::encode(&nonce),
+            "encrypted_content": base64::encode(&encrypted_content),
+            "created_at": note.created_at,
+            "updated_at": note.updated_at
+        });
+        
+        std::fs::write(&note_file_path, serde_json::to_string_pretty(&note_file_data)?)?;
+
+        // Update notes index with the updated note
+        self.update_notes_index(&session.encryption_key, |index| {
+            index.update_note(&note);
+        })?;
+
+        Ok(())
+    }
+
+    /// Move a folder to a different location
+    pub fn move_folder(&self, session_id: &str, old_path: &str, new_path: &str) -> Result<(), VaultError> {
+        let session = Self::get_session(session_id)
+            .ok_or_else(|| VaultError::InvalidPassword)?;
+
+        // Update notes index to move the folder
+        self.update_notes_index(&session.encryption_key, |index| {
+            if let Err(e) = index.move_folder(old_path, new_path) {
+                eprintln!("Failed to move folder {} to {}: {}", old_path, new_path, e);
             }
         })?;
 

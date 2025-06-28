@@ -459,6 +459,38 @@ async fn delete_folder(
     }
 }
 
+#[tauri::command]
+async fn move_note(
+    vault_path: String,
+    session_id: String,
+    note_id: String,
+    new_folder_path: Option<String>
+) -> Result<bool, AppError> {
+    let path_buf = std::path::PathBuf::from(&vault_path);
+    let vault_manager = VaultManager::new(&path_buf);
+    
+    match vault_manager.move_note(&session_id, &note_id, new_folder_path) {
+        Ok(_) => Ok(true),
+        Err(_) => Ok(false), // Return false instead of error for simpler handling
+    }
+}
+
+#[tauri::command]
+async fn move_folder(
+    vault_path: String,
+    session_id: String,
+    old_path: String,
+    new_path: String
+) -> Result<bool, AppError> {
+    let path_buf = std::path::PathBuf::from(&vault_path);
+    let vault_manager = VaultManager::new(&path_buf);
+    
+    match vault_manager.move_folder(&session_id, &old_path, &new_path) {
+        Ok(_) => Ok(true),
+        Err(_) => Ok(false), // Return false instead of error for simpler handling
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -488,7 +520,9 @@ pub fn run() {
             load_note,
             save_note,
             delete_note,
-            delete_folder
+            delete_folder,
+            move_note,
+            move_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -298,4 +298,40 @@ export const api = {
       throw new ApiError('Failed to delete folder', error);
     }
   },
+
+  async moveNote(
+    vaultPath: string,
+    sessionId: string,
+    noteId: string,
+    newFolderPath?: string
+  ): Promise<boolean> {
+    try {
+      return await invoke<boolean>('move_note', {
+        vaultPath,
+        sessionId,
+        noteId,
+        newFolderPath
+      });
+    } catch (error) {
+      throw new ApiError('Failed to move note', error);
+    }
+  },
+
+  async moveFolder(
+    vaultPath: string,
+    sessionId: string,
+    oldPath: string,
+    newPath: string
+  ): Promise<boolean> {
+    try {
+      return await invoke<boolean>('move_folder', {
+        vaultPath,
+        sessionId,
+        oldPath,
+        newPath
+      });
+    } catch (error) {
+      throw new ApiError('Failed to move folder', error);
+    }
+  },
 }; 

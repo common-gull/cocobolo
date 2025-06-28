@@ -20,7 +20,7 @@ import {
   IconLogout 
 } from '@tabler/icons-react';
 import { useTheme } from '../../contexts/ThemeContext';
-import { TreeNotesList } from '../NotesList';
+import { DraggableTreeNotesList } from '../DraggableTreeNotesList';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -169,7 +169,7 @@ export function MainLayout({
               {/* File Explorer Style Notes Tree */}
               {vaultPath && sessionId && (
                 <Box style={{ flex: 1 }}>
-                  <TreeNotesList
+                  <DraggableTreeNotesList
                     vaultPath={vaultPath}
                     sessionId={sessionId}
                     {...(selectedNoteId && { selectedNoteId })}
