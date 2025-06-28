@@ -589,6 +589,7 @@ dependencies = [
  "base64 0.22.1",
  "chacha20poly1305",
  "chrono",
+ "lazy_static",
  "rand 0.8.5",
  "serde",
  "serde_json",
@@ -599,6 +600,7 @@ dependencies = [
  "tauri-plugin-opener",
  "thiserror 1.0.69",
  "tokio",
+ "uuid",
  "zeroize",
 ]
 

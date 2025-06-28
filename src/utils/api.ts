@@ -1,6 +1,15 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-import type { AppInfo, VaultLocationInfo, AppConfig, PasswordStrength, VaultSetupInfo, VaultInfo } from '../types';
+import type { 
+  AppInfo, 
+  VaultLocationInfo, 
+  AppConfig, 
+  PasswordStrength, 
+  VaultSetupInfo, 
+  VaultInfo,
+  VaultUnlockResult,
+  RateLimitInfo
+} from '../types';
 
 export class ApiError extends Error {
   public override cause?: unknown;
@@ -13,12 +22,20 @@ export class ApiError extends Error {
 }
 
 export const api = {
-  // App info
+  // Basic app functions
   async getAppInfo(): Promise<AppInfo> {
     try {
       return await invoke<AppInfo>('get_app_info');
     } catch (error) {
       throw new ApiError('Failed to get app info', error);
+    }
+  },
+
+  async greet(name: string): Promise<string> {
+    try {
+      return await invoke<string>('greet', { name });
+    } catch (error) {
+      throw new ApiError('Failed to greet', error);
     }
   },
 
@@ -28,12 +45,12 @@ export const api = {
       const result = await open({
         directory: true,
         multiple: false,
-        title: 'Select Vault Location',
+        title: 'Select Vault Directory',
       });
       
-      return result as string | null;
+      return result || null;
     } catch (error) {
-      throw new ApiError('Failed to open directory dialog', error);
+      throw new ApiError('Failed to select directory', error);
     }
   },
 
@@ -47,7 +64,7 @@ export const api = {
 
   async setVaultLocation(path: string): Promise<void> {
     try {
-      await invoke('set_vault_location', { path });
+      await invoke<void>('set_vault_location', { path });
     } catch (error) {
       throw new ApiError('Failed to set vault location', error);
     }
@@ -106,12 +123,36 @@ export const api = {
     }
   },
 
-  // Utility
-  async greet(name: string): Promise<string> {
+  // Vault unlock and session management
+  async getVaultRateLimitStatus(path: string): Promise<RateLimitInfo> {
     try {
-      return await invoke<string>('greet', { name });
+      return await invoke<RateLimitInfo>('get_vault_rate_limit_status', { path });
     } catch (error) {
-      throw new ApiError('Failed to greet', error);
+      throw new ApiError('Failed to get rate limit status', error);
+    }
+  },
+
+  async unlockVault(path: string, password: string): Promise<VaultUnlockResult> {
+    try {
+      return await invoke<VaultUnlockResult>('unlock_vault', { path, password });
+    } catch (error) {
+      throw new ApiError('Failed to unlock vault', error);
+    }
+  },
+
+  async closeVaultSession(sessionId: string): Promise<boolean> {
+    try {
+      return await invoke<boolean>('close_vault_session', { sessionId });
+    } catch (error) {
+      throw new ApiError('Failed to close vault session', error);
+    }
+  },
+
+  async checkSessionStatus(sessionId: string): Promise<boolean> {
+    try {
+      return await invoke<boolean>('check_session_status', { sessionId });
+    } catch (error) {
+      throw new ApiError('Failed to check session status', error);
     }
   },
 }; 

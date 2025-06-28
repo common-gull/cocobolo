@@ -58,6 +58,20 @@ pub struct VaultSetupInfo {
     pub vault_info: Option<VaultInfo>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct VaultUnlockResult {
+    pub success: bool,
+    pub session_id: Option<String>,
+    pub vault_info: Option<VaultInfo>,
+    pub error_message: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RateLimitInfo {
+    pub is_rate_limited: bool,
+    pub seconds_remaining: Option<u64>,
+}
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn get_app_info() -> Result<AppInfo, AppError> {
@@ -203,6 +217,70 @@ async fn verify_vault_password(path: String, password: String) -> Result<bool, A
     Ok(vault_manager.verify_vault_password(&secure_password)?)
 }
 
+// Vault unlock and session management commands
+
+#[tauri::command]
+async fn get_vault_rate_limit_status(path: String) -> Result<RateLimitInfo, AppError> {
+    let path_buf = std::path::PathBuf::from(&path);
+    let vault_manager = VaultManager::new(&path_buf);
+    
+    let (is_rate_limited, seconds_remaining) = vault_manager.get_rate_limit_status();
+    
+    Ok(RateLimitInfo {
+        is_rate_limited,
+        seconds_remaining,
+    })
+}
+
+#[tauri::command]
+async fn unlock_vault(path: String, password: String) -> Result<VaultUnlockResult, AppError> {
+    let path_buf = std::path::PathBuf::from(&path);
+    let vault_manager = VaultManager::new(&path_buf);
+    let secure_password = SecurePassword::new(password);
+    
+    match vault_manager.unlock_vault(&secure_password) {
+        Ok(session_id) => {
+            // Get vault info for the response
+            let vault_info = vault_manager.load_vault_info().ok();
+            
+            Ok(VaultUnlockResult {
+                success: true,
+                session_id: Some(session_id),
+                vault_info,
+                error_message: None,
+            })
+        }
+        Err(vault_error) => {
+            let error_message = match &vault_error {
+                VaultError::InvalidPassword => "Incorrect password. Please try again.".to_string(),
+                VaultError::RateLimited(seconds) => {
+                    format!("Too many failed attempts. Please wait {} seconds before trying again.", seconds)
+                }
+                VaultError::VaultCorrupted => "Vault file is corrupted or invalid.".to_string(),
+                VaultError::NotEncrypted(_) => "This vault is not encrypted.".to_string(),
+                _ => "Failed to unlock vault.".to_string(),
+            };
+            
+            Ok(VaultUnlockResult {
+                success: false,
+                session_id: None,
+                vault_info: None,
+                error_message: Some(error_message),
+            })
+        }
+    }
+}
+
+#[tauri::command]
+async fn close_vault_session(session_id: String) -> Result<bool, AppError> {
+    Ok(VaultManager::close_session(&session_id))
+}
+
+#[tauri::command]
+async fn check_session_status(session_id: String) -> Result<bool, AppError> {
+    Ok(VaultManager::get_session(&session_id).is_some())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -220,7 +298,11 @@ pub fn run() {
             validate_password_strength,
             check_vault_setup_status,
             create_encrypted_vault,
-            verify_vault_password
+            verify_vault_password,
+            get_vault_rate_limit_status,
+            unlock_vault,
+            close_vault_session,
+            check_session_status
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

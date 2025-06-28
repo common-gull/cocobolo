@@ -182,7 +182,7 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
               onClick={togglePasswordVisibility}
               disabled={state.isCreating}
             >
-              {state.showPassword ? '👁️' : '👁️‍🗨️'}
+              <span className={`icon ${state.showPassword ? 'icon-eye-slash' : 'icon-eye'}`}></span>
             </button>
           </div>
           
@@ -222,7 +222,7 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
                   <ul>
                     {state.passwordStrength.issues.map((issue, index) => (
                       <li key={index} className="issue-item">
-                        <span className="icon">⚠</span>
+                        <span className="icon icon-warning"></span>
                         {issue}
                       </li>
                     ))}
@@ -236,7 +236,7 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
                   <ul>
                     {state.passwordStrength.suggestions.map((suggestion, index) => (
                       <li key={index} className="suggestion-item">
-                        <span className="icon">💡</span>
+                        <span className="icon icon-lightbulb"></span>
                         {suggestion}
                       </li>
                     ))}
@@ -267,15 +267,13 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
               onClick={toggleConfirmPasswordVisibility}
               disabled={state.isCreating}
             >
-              {state.showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+              <span className={`icon ${state.showConfirmPassword ? 'icon-eye-slash' : 'icon-eye'}`}></span>
             </button>
           </div>
           
           {state.confirmPassword && getPasswordMatchStatus() !== null && (
             <div className={`password-match ${getPasswordMatchStatus() ? 'valid' : 'invalid'}`}>
-              <span className="icon">
-                {getPasswordMatchStatus() ? '✓' : '✗'}
-              </span>
+              <span className={`icon ${getPasswordMatchStatus() ? 'icon-check' : 'icon-x'}`}></span>
               <span>
                 {getPasswordMatchStatus() ? 'Passwords match' : 'Passwords do not match'}
               </span>
@@ -286,13 +284,15 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
 
       {state.error && (
         <div className="error-message">
-          <span className="icon">⚠</span>
+          <span className="icon icon-warning"></span>
           <span>{state.error}</span>
         </div>
       )}
 
       <div className="security-notice">
-        <h3>🔒 Security Notice</h3>
+        <h3>
+          <span className="icon icon-lock"></span> Security Notice
+        </h3>
         <ul>
           <li>Your password is used to encrypt all your notes</li>
           <li>We never store your password - only an encrypted hash</li>

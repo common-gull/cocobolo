@@ -36,3 +36,7 @@ rand = "0.8"
 zeroize = { version = "1.7", features = ["zeroize_derive"] }
 base64 = "0.22"
 
+# Session and rate limiting dependencies
+lazy_static = "1.4"
+uuid = { version = "1.0", features = ["v4"] }
+

@@ -97,26 +97,26 @@ export function VaultLocationSelector({ onLocationSet }: VaultLocationSelectorPr
             <div className={`status ${validationResult.is_valid ? 'valid' : 'invalid'}`}>
               {validationResult.is_valid ? (
                 <div className="status-item valid">
-                  <span className="icon">✓</span>
+                  <span className="icon icon-check"></span>
                   <span>Directory exists and is accessible</span>
                 </div>
               ) : (
                 <div className="status-item invalid">
-                  <span className="icon">✗</span>
+                  <span className="icon icon-x"></span>
                   <span>Directory is not accessible</span>
                 </div>
               )}
               
               {validationResult.is_valid && (
                 <div className={`status-item ${validationResult.is_writable ? 'valid' : 'invalid'}`}>
-                  <span className="icon">{validationResult.is_writable ? '✓' : '✗'}</span>
+                  <span className={`icon ${validationResult.is_writable ? 'icon-check' : 'icon-x'}`}></span>
                   <span>{validationResult.is_writable ? 'Directory is writable' : 'Directory is not writable'}</span>
                 </div>
               )}
 
               {validationResult.has_existing_vault && (
                 <div className="status-item info">
-                  <span className="icon">ℹ</span>
+                  <span className="icon icon-info"></span>
                   <span>
                     Existing vault found: {validationResult.vault_info?.name || 'Unknown'}
                     {validationResult.vault_info?.created_at && (
@@ -142,7 +142,7 @@ export function VaultLocationSelector({ onLocationSet }: VaultLocationSelectorPr
 
         {error && (
           <div className="error-message">
-            <span className="icon">⚠</span>
+            <span className="icon icon-warning"></span>
             <span>{error}</span>
           </div>
         )}

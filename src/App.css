@@ -28,128 +28,113 @@
   -webkit-text-size-adjust: 100%;
 
   /* Color system */
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
+  --text-primary: #212529;
+  --text-secondary: #6c757d;
   --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #e9ecef;
   --bg-hover: #f1f5f9;
-  --border-color: #e2e8f0;
-  --accent-color: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-rgb: 59, 130, 246;
-  --success-color: #10b981;
-  --error-color: #ef4444;
+  --border-color: #dee2e6;
+  --accent-color: #0d6efd;
+  --accent-hover: #0b5ed7;
+  --accent-rgb: 13, 110, 253;
+  --success-color: #198754;
+  --error-color: #dc3545;
   --error-bg: #fef2f2;
   --error-border: #fecaca;
-  --warning-color: #f59e0b;
-  --info-color: #06b6d4;
+  --warning-color: #fd7e14;
+  --info-color: #0dcaf0;
 }
 
-[data-theme="dark"] {
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-hover: #334155;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --accent-color: #3b82f6;
-  --accent-hover: #60a5fa;
-  --border-color: #334155;
-  --success-color: #10b981;
-  --error-color: #ef4444;
-  --error-bg: #1f2937;
-  --error-border: #374151;
-  --warning-color: #f59e0b;
-  --info-color: #06b6d4;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #212529;
+    --bg-secondary: #343a40;
+    --bg-tertiary: #495057;
+    --text-primary: #f8f9fa;
+    --text-secondary: #adb5bd;
+    --border-color: #495057;
+  }
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--bg-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-primary);
   color: var(--text-primary);
+  line-height: 1.6;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1rem;
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
 }
 
 .app-header {
   text-align: center;
   margin-bottom: 3rem;
-  padding: 2rem;
-  background: var(--bg-secondary);
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .app-header h1 {
+  font-size: 2.5rem;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
-  font-size: 2.5rem;
   font-weight: 700;
 }
 
-.app-description {
+.app-header p {
   color: var(--text-secondary);
   font-size: 1.1rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
 }
 
-.app-version {
+.app-info {
   color: var(--text-secondary);
   font-size: 0.9rem;
-  opacity: 0.8;
 }
 
-.welcome-section {
-  margin-bottom: 2rem;
-  padding: 2rem;
+.app-main {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Main App Interface */
+.main-app {
   background: var(--bg-secondary);
   border-radius: 12px;
-  text-align: left;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.welcome-section h2 {
-  color: var(--text-primary);
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.welcome-section p {
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin-bottom: 1rem;
-}
-
-.welcome-section code {
+.app-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
   background: var(--bg-primary);
-  color: var(--text-primary);
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
-  border: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
 }
 
-.vault-info {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1rem;
-  margin: 1rem 0;
-}
-
-.vault-info p {
-  margin-bottom: 0.5rem;
+.vault-status {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
 }
 
-.vault-info p:last-child {
-  margin-bottom: 0;
+.vault-name {
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .encryption-badge {
@@ -158,171 +143,521 @@ body {
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   font-size: 0.75rem;
-  font-weight: 600;
-  margin-left: 0.5rem;
+  font-weight: 500;
 }
 
-.demo-section {
-  margin-bottom: 2rem;
+.logout-button {
+  padding: 0.5rem 1rem;
+  background: var(--error-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.logout-button:hover {
+  background: #c82333;
+}
+
+.notes-interface {
   padding: 2rem;
-  background: var(--bg-secondary);
-  border-radius: 12px;
-  text-align: left;
 }
 
-.demo-section h3 {
+.notes-interface h2 {
   color: var(--text-primary);
   margin-bottom: 1rem;
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.5rem;
 }
 
-.demo-section p {
+.notes-interface p {
   color: var(--text-secondary);
-  margin-bottom: 1rem;
+  margin-bottom: 2rem;
   line-height: 1.6;
 }
 
-.greet-form {
+.session-info {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.session-info h3 {
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.session-info p {
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.session-info p:last-child {
+  margin-bottom: 0;
+}
+
+/* Home View */
+.home-view {
+  display: grid;
+  gap: 2rem;
+}
+
+.welcome-section {
+  text-align: center;
+  padding: 2rem;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-section h2 {
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  font-size: 1.8rem;
+}
+
+.welcome-section p {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+}
+
+.vault-info-display {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.vault-info-display h3 {
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  text-align: left;
+}
+
+.vault-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: left;
+}
+
+.vault-header {
   display: flex;
-  gap: 1rem;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 1rem;
 }
 
-.greet-form input {
-  flex: 1;
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: var(--bg-primary);
+.vault-header h4 {
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: 1.1rem;
+  margin: 0;
 }
 
-.greet-form input:focus {
-  outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.1);
+.vault-badges {
+  display: flex;
+  gap: 0.5rem;
 }
 
-.greet-form button {
+.version-badge {
+  background: var(--info-color);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.vault-details {
+  margin-bottom: 1.5rem;
+}
+
+.vault-details p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.vault-details p:last-child {
+  margin-bottom: 0;
+}
+
+.unlock-vault-button {
   padding: 0.75rem 1.5rem;
   background: var(--accent-color);
   color: white;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
 }
 
-.greet-form button:hover {
+.unlock-vault-button:hover {
   background: var(--accent-hover);
-  transform: translateY(-1px);
 }
 
-.success-message {
-  padding: 1rem;
-  background: rgba(var(--success-color), 0.1);
-  color: var(--success-color);
-  border: 1px solid rgba(var(--success-color), 0.2);
-  border-radius: 6px;
+/* Demo Section */
+.demo-section {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.demo-section h3 {
+  color: var(--text-primary);
   margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.demo-form {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.demo-input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.demo-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.1);
+}
+
+.demo-button {
+  padding: 0.75rem 1.5rem;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.demo-button:hover {
+  background: var(--accent-hover);
+}
+
+.demo-result {
+  padding: 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+
+.demo-result.success {
+  background: rgba(25, 135, 84, 0.1);
+  border: 1px solid var(--success-color);
+  color: var(--success-color);
+}
+
+.demo-result.error {
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid var(--error-color);
+  color: var(--error-color);
 }
 
 .error-message {
-  padding: 1rem;
-  background: var(--error-bg);
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid var(--error-color);
   color: var(--error-color);
-  border: 1px solid var(--error-border);
+  padding: 1rem;
   border-radius: 6px;
-  margin-bottom: 1rem;
-}
-
-.loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  font-size: 1.2rem;
-  color: var(--text-secondary);
-}
-
-.app-footer {
   text-align: center;
-  margin-top: 3rem;
-  padding: 2rem;
-  color: var(--text-secondary);
   font-size: 0.9rem;
-  border-top: 1px solid var(--border-color);
 }
 
-/* Responsive design */
+/* Responsive Design */
 @media (max-width: 768px) {
   .container {
-    padding: 0.5rem;
+    padding: 1rem;
   }
-  
-  .app-header,
-  .welcome-section,
-  .demo-section {
-    padding: 1.5rem;
-  }
-  
+
   .app-header h1 {
     font-size: 2rem;
   }
-  
-  .greet-form {
+
+  .app-toolbar {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .vault-status {
+    justify-content: center;
+  }
+
+  .demo-form {
     flex-direction: column;
   }
-  
-  .greet-form button {
-    width: 100%;
-  }
-  
-  .vault-info p {
+
+  .vault-header {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
+    gap: 0.5rem;
   }
-  
-  .encryption-badge {
-    margin-left: 0;
-    align-self: flex-start;
+
+  .vault-badges {
+    justify-content: flex-start;
   }
 }
 
-/* Dark theme adjustments */
-[data-theme="dark"] .app-header,
-[data-theme="dark"] .welcome-section,
-[data-theme="dark"] .demo-section {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-/* High contrast mode support */
+/* High contrast mode */
 @media (prefers-contrast: high) {
-  .greet-form input,
-  .vault-info {
+  .vault-card,
+  .demo-section,
+  .welcome-section {
     border-width: 2px;
   }
-  
-  .encryption-badge {
-    border: 2px solid var(--success-color);
+
+  .encryption-badge,
+  .version-badge,
+  .demo-button,
+  .unlock-vault-button,
+  .logout-button {
+    border: 1px solid currentColor;
   }
 }
 
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  .greet-form button {
-    transition: none;
-  }
-  
-  .greet-form button:hover {
-    transform: none;
-  }
-  
-  body {
-    transition: none;
-  }
+/* CSS Icon System */
+.icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  position: relative;
+  vertical-align: middle;
+}
+
+/* Lock Icon */
+.icon-lock::before {
+  content: '';
+  position: absolute;
+  top: 0.2em;
+  left: 0.2em;
+  width: 0.6em;
+  height: 0.4em;
+  border: 0.1em solid currentColor;
+  border-bottom: none;
+  border-radius: 0.3em 0.3em 0 0;
+}
+
+.icon-lock::after {
+  content: '';
+  position: absolute;
+  bottom: 0.1em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.5em;
+  background: currentColor;
+  border-radius: 0.1em;
+}
+
+/* Check Icon */
+.icon-check::before {
+  content: '';
+  position: absolute;
+  top: 0.4em;
+  left: 0.2em;
+  width: 0.3em;
+  height: 0.15em;
+  border-left: 0.1em solid currentColor;
+  border-bottom: 0.1em solid currentColor;
+  transform: rotate(-45deg);
+}
+
+.icon-check::after {
+  content: '';
+  position: absolute;
+  top: 0.25em;
+  left: 0.45em;
+  width: 0.4em;
+  height: 0.15em;
+  border-left: 0.1em solid currentColor;
+  border-bottom: 0.1em solid currentColor;
+  transform: rotate(-45deg);
+}
+
+/* X/Cross Icon */
+.icon-x::before,
+.icon-x::after {
+  content: '';
+  position: absolute;
+  top: 0.45em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.1em;
+  background: currentColor;
+}
+
+.icon-x::before {
+  transform: rotate(45deg);
+}
+
+.icon-x::after {
+  transform: rotate(-45deg);
+}
+
+/* Warning Icon */
+.icon-warning::before {
+  content: '';
+  position: absolute;
+  top: 0.1em;
+  left: 0.45em;
+  width: 0;
+  height: 0;
+  border-left: 0.4em solid transparent;
+  border-right: 0.4em solid transparent;
+  border-bottom: 0.7em solid currentColor;
+}
+
+.icon-warning::after {
+  content: '!';
+  position: absolute;
+  top: 0.25em;
+  left: 0.42em;
+  font-size: 0.6em;
+  font-weight: bold;
+  color: var(--bg-primary);
+}
+
+/* Info Icon */
+.icon-info::before {
+  content: '';
+  position: absolute;
+  top: 0.1em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.8em;
+  border: 0.1em solid currentColor;
+  border-radius: 50%;
+}
+
+.icon-info::after {
+  content: 'i';
+  position: absolute;
+  top: 0.15em;
+  left: 0.42em;
+  font-size: 0.6em;
+  font-weight: bold;
+  font-style: italic;
+}
+
+/* Clock/Timer Icon */
+.icon-clock::before {
+  content: '';
+  position: absolute;
+  top: 0.1em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.8em;
+  border: 0.1em solid currentColor;
+  border-radius: 50%;
+}
+
+.icon-clock::after {
+  content: '';
+  position: absolute;
+  top: 0.3em;
+  left: 0.45em;
+  width: 0.1em;
+  height: 0.3em;
+  background: currentColor;
+  transform-origin: bottom;
+}
+
+/* Lightbulb Icon */
+.icon-lightbulb::before {
+  content: '';
+  position: absolute;
+  top: 0.1em;
+  left: 0.25em;
+  width: 0.5em;
+  height: 0.5em;
+  border: 0.1em solid currentColor;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+}
+
+.icon-lightbulb::after {
+  content: '';
+  position: absolute;
+  bottom: 0.1em;
+  left: 0.35em;
+  width: 0.3em;
+  height: 0.2em;
+  border: 0.05em solid currentColor;
+  border-top: none;
+}
+
+/* Eye Icon for password visibility */
+.icon-eye::before {
+  content: '';
+  position: absolute;
+  top: 0.4em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.2em;
+  border: 0.05em solid currentColor;
+  border-radius: 0.4em;
+}
+
+.icon-eye::after {
+  content: '';
+  position: absolute;
+  top: 0.35em;
+  left: 0.4em;
+  width: 0.2em;
+  height: 0.2em;
+  background: currentColor;
+  border-radius: 50%;
+}
+
+/* Eye Slash Icon for hidden password */
+.icon-eye-slash::before {
+  content: '';
+  position: absolute;
+  top: 0.4em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.2em;
+  border: 0.05em solid currentColor;
+  border-radius: 0.4em;
+  opacity: 0.5;
+}
+
+.icon-eye-slash::after {
+  content: '';
+  position: absolute;
+  top: 0.1em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.05em;
+  background: currentColor;
+  transform: rotate(45deg);
+  transform-origin: center;
 }

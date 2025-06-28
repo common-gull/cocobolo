@@ -37,7 +37,7 @@ export interface VaultLocationInfo {
 
 export interface AppConfig {
   vault_location?: string;
-  theme: string;
+  theme: 'light' | 'dark' | 'system';
   auto_save_interval: number;
   show_markdown_preview: boolean;
 }
@@ -72,4 +72,26 @@ export interface PasswordSetupState {
   error: string | null;
   showPassword: boolean;
   showConfirmPassword: boolean;
-} 
+}
+
+export interface VaultUnlockResult {
+  success: boolean;
+  session_id?: string;
+  vault_info?: VaultInfo;
+  error_message?: string;
+}
+
+export interface RateLimitInfo {
+  is_rate_limited: boolean;
+  seconds_remaining?: number;
+}
+
+export interface VaultUnlockState {
+  password: string;
+  isUnlocking: boolean;
+  error: string | null;
+  showPassword: boolean;
+  rateLimitInfo: RateLimitInfo | null;
+}
+
+export type AppView = 'home' | 'vault-setup' | 'password-setup' | 'vault-unlock' | 'main-app'; 
