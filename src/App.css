@@ -19,15 +19,13 @@
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;
-  color: #0f0f0f;
-  background-color: #f6f6f6;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
 
-  /* Color system */
+  /* Light theme colors */
   --text-primary: #212529;
   --text-secondary: #6c757d;
   --bg-primary: #ffffff;
@@ -44,16 +42,79 @@
   --error-border: #fecaca;
   --warning-color: #fd7e14;
   --info-color: #0dcaf0;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  
+  /* Spacing scale for consistency */
+  --space-xs: 0.25rem;  /* 4px */
+  --space-sm: 0.5rem;   /* 8px */
+  --space-md: 1rem;     /* 16px */
+  --space-lg: 1.5rem;   /* 24px */
+  --space-xl: 2rem;     /* 32px */
+  --space-2xl: 3rem;    /* 48px */
+  
+  /* Border radius scale */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+  
+  /* Typography scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.85rem;
+  --text-base: 0.9rem;
+  --text-lg: 1.1rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
 }
 
+/* Dark theme */
+[data-theme="dark"] {
+  --text-primary: #f8f9fa;
+  --text-secondary: #adb5bd;
+  --bg-primary: #1a1d23;
+  --bg-secondary: #212529;
+  --bg-tertiary: #343a40;
+  --bg-hover: #2c3034;
+  --border-color: #495057;
+  --accent-color: #0d6efd;
+  --accent-hover: #0b5ed7;
+  --success-color: #198754;
+  --error-color: #dc3545;
+  --error-bg: rgba(220, 53, 69, 0.1);
+  --error-border: rgba(220, 53, 69, 0.3);
+  --warning-color: #fd7e14;
+  --info-color: #0dcaf0;
+  
+  /* Dark theme shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* System preference fallback */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg-primary: #212529;
-    --bg-secondary: #343a40;
-    --bg-tertiary: #495057;
+  :root:not([data-theme]) {
     --text-primary: #f8f9fa;
     --text-secondary: #adb5bd;
+    --bg-primary: #1a1d23;
+    --bg-secondary: #212529;
+    --bg-tertiary: #343a40;
+    --bg-hover: #2c3034;
     --border-color: #495057;
+    --error-bg: rgba(220, 53, 69, 0.1);
+    --error-border: rgba(220, 53, 69, 0.3);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
   }
 }
 
@@ -199,6 +260,169 @@ body {
 
 .session-info p:last-child {
   margin-bottom: 0;
+}
+
+/* Main App Content */
+.main-app-content {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.welcome-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.welcome-header h2 {
+  color: var(--text-primary);
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.welcome-header p {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.dashboard-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent-color);
+}
+
+.dashboard-card h3 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.dashboard-card h3 .icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--accent-color);
+}
+
+.dashboard-card p {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.card-action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.card-action-button:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.card-action-button .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Session Info Card */
+.session-info-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.session-info-card h3 {
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.info-item .label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.info-item .value {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.status-active {
+  color: var(--success-color) !important;
+}
+
+/* Enhanced header styling */
+.app-header h1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-size: 2.5rem;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.app-header h1 .icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--accent-color);
 }
 
 /* Home View */
@@ -660,4 +884,587 @@ body {
   background: currentColor;
   transform: rotate(45deg);
   transform-origin: center;
+}
+
+/* Sun Icon */
+.icon-sun::before {
+  content: '';
+  position: absolute;
+  top: 0.3em;
+  left: 0.3em;
+  width: 0.4em;
+  height: 0.4em;
+  border: 0.05em solid currentColor;
+  border-radius: 50%;
+}
+
+.icon-sun::after {
+  content: '';
+  position: absolute;
+  top: 0.05em;
+  left: 0.45em;
+  width: 0.1em;
+  height: 0.2em;
+  background: currentColor;
+  box-shadow: 
+    0 0.7em 0 currentColor,
+    0.25em 0.6em 0 currentColor,
+    0.5em 0.5em 0 currentColor,
+    0.6em 0.25em 0 currentColor,
+    0.7em 0 0 currentColor,
+    0.6em -0.25em 0 currentColor,
+    0.5em -0.5em 0 currentColor,
+    0.25em -0.6em 0 currentColor;
+}
+
+/* Moon Icon */
+.icon-moon::before {
+  content: '';
+  position: absolute;
+  top: 0.1em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.8em;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.icon-moon::after {
+  content: '';
+  position: absolute;
+  top: 0.05em;
+  left: 0.25em;
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 50%;
+  background: var(--bg-primary);
+}
+
+/* Monitor Icon */
+.icon-monitor::before {
+  content: '';
+  position: absolute;
+  top: 0.15em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.5em;
+  border: 0.05em solid currentColor;
+  border-radius: 0.05em;
+}
+
+.icon-monitor::after {
+  content: '';
+  position: absolute;
+  bottom: 0.1em;
+  left: 0.3em;
+  width: 0.4em;
+  height: 0.1em;
+  background: currentColor;
+}
+
+/* Menu Icon */
+.icon-menu::before {
+  content: '';
+  position: absolute;
+  top: 0.2em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.1em;
+  background: currentColor;
+  box-shadow: 0 0.2em 0 currentColor, 0 0.4em 0 currentColor;
+}
+
+/* Home Icon */
+.icon-home::before {
+  content: '';
+  position: absolute;
+  top: 0.3em;
+  left: 0.2em;
+  width: 0.6em;
+  height: 0.5em;
+  border: 0.05em solid currentColor;
+  border-top: none;
+}
+
+.icon-home::after {
+  content: '';
+  position: absolute;
+  top: 0.1em;
+  left: 0.45em;
+  width: 0;
+  height: 0;
+  border-left: 0.25em solid transparent;
+  border-right: 0.25em solid transparent;
+  border-bottom: 0.25em solid currentColor;
+}
+
+/* File Icon */
+.icon-file::before {
+  content: '';
+  position: absolute;
+  top: 0.1em;
+  left: 0.2em;
+  width: 0.5em;
+  height: 0.7em;
+  border: 0.05em solid currentColor;
+  border-radius: 0.05em;
+}
+
+.icon-file::after {
+  content: '';
+  position: absolute;
+  top: 0.05em;
+  left: 0.55em;
+  width: 0;
+  height: 0;
+  border-left: 0.15em solid currentColor;
+  border-top: 0.15em solid transparent;
+}
+
+/* Folder Icon */
+.icon-folder::before {
+  content: '';
+  position: absolute;
+  top: 0.3em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.5em;
+  border: 0.05em solid currentColor;
+  border-radius: 0.05em;
+}
+
+.icon-folder::after {
+  content: '';
+  position: absolute;
+  top: 0.2em;
+  left: 0.1em;
+  width: 0.4em;
+  height: 0.15em;
+  border: 0.05em solid currentColor;
+  border-bottom: none;
+  border-radius: 0.05em 0.05em 0 0;
+}
+
+/* Search Icon */
+.icon-search::before {
+  content: '';
+  position: absolute;
+  top: 0.15em;
+  left: 0.15em;
+  width: 0.5em;
+  height: 0.5em;
+  border: 0.05em solid currentColor;
+  border-radius: 50%;
+}
+
+.icon-search::after {
+  content: '';
+  position: absolute;
+  top: 0.55em;
+  left: 0.55em;
+  width: 0.3em;
+  height: 0.05em;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+
+/* Tag Icon */
+.icon-tag::before {
+  content: '';
+  position: absolute;
+  top: 0.2em;
+  left: 0.1em;
+  width: 0.6em;
+  height: 0.6em;
+  border: 0.05em solid currentColor;
+  border-radius: 0 0.1em 0.1em 0;
+  transform: rotate(45deg);
+}
+
+.icon-tag::after {
+  content: '';
+  position: absolute;
+  top: 0.35em;
+  left: 0.25em;
+  width: 0.1em;
+  height: 0.1em;
+  background: currentColor;
+  border-radius: 50%;
+}
+
+/* History Icon */
+.icon-history::before {
+  content: '';
+  position: absolute;
+  top: 0.1em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.8em;
+  border: 0.05em solid currentColor;
+  border-radius: 50%;
+}
+
+.icon-history::after {
+  content: '';
+  position: absolute;
+  top: 0.3em;
+  left: 0.45em;
+  width: 0.1em;
+  height: 0.3em;
+  background: currentColor;
+  transform-origin: bottom;
+}
+
+/* Trash Icon */
+.icon-trash::before {
+  content: '';
+  position: absolute;
+  top: 0.25em;
+  left: 0.2em;
+  width: 0.6em;
+  height: 0.6em;
+  border: 0.05em solid currentColor;
+  border-top: none;
+  border-radius: 0 0 0.05em 0.05em;
+}
+
+.icon-trash::after {
+  content: '';
+  position: absolute;
+  top: 0.15em;
+  left: 0.3em;
+  width: 0.4em;
+  height: 0.1em;
+  background: currentColor;
+  border-radius: 0.05em;
+}
+
+/* Settings Icon */
+.icon-settings::before {
+  content: '';
+  position: absolute;
+  top: 0.2em;
+  left: 0.2em;
+  width: 0.6em;
+  height: 0.6em;
+  border: 0.1em solid currentColor;
+  border-radius: 50%;
+}
+
+.icon-settings::after {
+  content: '';
+  position: absolute;
+  top: 0.35em;
+  left: 0.35em;
+  width: 0.3em;
+  height: 0.3em;
+  border: 0.05em solid currentColor;
+  border-radius: 50%;
+}
+
+/* Backup Icon */
+.icon-backup::before {
+  content: '';
+  position: absolute;
+  top: 0.3em;
+  left: 0.1em;
+  width: 0.8em;
+  height: 0.5em;
+  border: 0.05em solid currentColor;
+  border-radius: 0.1em;
+}
+
+.icon-backup::after {
+  content: '';
+  position: absolute;
+  top: 0.15em;
+  left: 0.4em;
+  width: 0;
+  height: 0;
+  border-left: 0.1em solid transparent;
+  border-right: 0.1em solid transparent;
+  border-bottom: 0.2em solid currentColor;
+}
+
+/* Logout Icon */
+.icon-logout::before {
+  content: '';
+  position: absolute;
+  top: 0.3em;
+  left: 0.1em;
+  width: 0.5em;
+  height: 0.4em;
+  border: 0.05em solid currentColor;
+  border-right: none;
+  border-radius: 0.1em 0 0 0.1em;
+}
+
+.icon-logout::after {
+  content: '';
+  position: absolute;
+  top: 0.45em;
+  left: 0.5em;
+  width: 0.3em;
+  height: 0.05em;
+  background: currentColor;
+  box-shadow: 
+    -0.1em -0.05em 0 currentColor,
+    -0.1em 0.05em 0 currentColor;
+}
+
+/* Menu Icon - complete definition */
+.icon-menu::after {
+  content: '';
+  /* No after element needed for menu icon */
+}
+
+/* Monitor Icon - complete definition */
+.icon-monitor::after {
+  content: '';
+  position: absolute;
+  top: 0.7em;
+  left: 0.3em;
+  width: 0.4em;
+  height: 0.1em;
+  background: currentColor;
+  border-radius: 0 0 0.05em 0.05em;
+}
+
+
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .layout-sidebar,
+  .nav-text,
+  .nav-section h3,
+  .sidebar-toggle,
+  .theme-toggle,
+  .logout-button,
+  .nav-link {
+    transition: none;
+  }
+}
+
+/* Utility Classes for Common Patterns */
+
+/* Flexbox utilities */
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-sm {
+  gap: var(--space-sm);
+}
+
+.gap-md {
+  gap: var(--space-md);
+}
+
+.gap-lg {
+  gap: var(--space-lg);
+}
+
+/* Spacing utilities */
+.p-sm {
+  padding: var(--space-sm);
+}
+
+.p-md {
+  padding: var(--space-md);
+}
+
+.p-lg {
+  padding: var(--space-lg);
+}
+
+.px-sm {
+  padding-left: var(--space-sm);
+  padding-right: var(--space-sm);
+}
+
+.px-md {
+  padding-left: var(--space-md);
+  padding-right: var(--space-md);
+}
+
+.py-sm {
+  padding-top: var(--space-sm);
+  padding-bottom: var(--space-sm);
+}
+
+.py-md {
+  padding-top: var(--space-md);
+  padding-bottom: var(--space-md);
+}
+
+.m-sm {
+  margin: var(--space-sm);
+}
+
+.m-md {
+  margin: var(--space-md);
+}
+
+.mb-sm {
+  margin-bottom: var(--space-sm);
+}
+
+.mb-md {
+  margin-bottom: var(--space-md);
+}
+
+.mb-lg {
+  margin-bottom: var(--space-lg);
+}
+
+/* Text utilities */
+.text-xs {
+  font-size: var(--text-xs);
+}
+
+.text-sm {
+  font-size: var(--text-sm);
+}
+
+.text-base {
+  font-size: var(--text-base);
+}
+
+.text-lg {
+  font-size: var(--text-lg);
+}
+
+.text-xl {
+  font-size: var(--text-xl);
+}
+
+.text-2xl {
+  font-size: var(--text-2xl);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+/* Border radius utilities */
+.rounded-sm {
+  border-radius: var(--radius-sm);
+}
+
+.rounded-md {
+  border-radius: var(--radius-md);
+}
+
+.rounded-lg {
+  border-radius: var(--radius-lg);
+}
+
+.rounded-xl {
+  border-radius: var(--radius-xl);
+}
+
+/* Transition utilities */
+.transition-fast {
+  transition: all var(--transition-fast);
+}
+
+.transition-normal {
+  transition: all var(--transition-normal);
+}
+
+.transition-slow {
+  transition: all var(--transition-slow);
+}
+
+/* Common button base styles */
+.btn-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--accent-color);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.btn-danger {
+  background: var(--error-color);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c82333;
+}
+
+/* Disabled state for all buttons */
+.btn-base:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Screen reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

@@ -3,6 +3,8 @@ import { api } from './utils/api';
 import { VaultLocationSelector } from './components/VaultLocationSelector';
 import { VaultPasswordSetup } from './components/VaultPasswordSetup';
 import { VaultUnlock } from './components/VaultUnlock';
+import { MainLayout } from './components/Layout/MainLayout';
+import { ThemeProvider } from './contexts/ThemeContext';
 import type { AppInfo, AppView, VaultSetupInfo, VaultInfo } from './types';
 import './App.css';
 
@@ -179,73 +181,105 @@ function App() {
     );
   }
 
-  return (
-    <div className="container">
-      <header className="app-header">
-        <h1>🌰 Cocobolo</h1>
-        <p>Secure Note-Taking Application</p>
-        {appInfo && (
-          <div className="app-info">
-            <span>v{appInfo.version}</span>
-          </div>
-        )}
-      </header>
-
-      <main className="app-main">
-        {currentView === 'vault-setup' && (
-          <VaultLocationSelector onLocationSet={handleVaultLocationSet} />
-        )}
-
-        {currentView === 'password-setup' && vaultLocation && (
+  const renderContent = () => {
+    switch (currentView) {
+      case 'vault-setup':
+        return <VaultLocationSelector onLocationSet={handleVaultLocationSet} />;
+      
+      case 'password-setup':
+        return vaultLocation ? (
           <VaultPasswordSetup
             vaultPath={vaultLocation}
             onVaultCreated={handleVaultCreated}
             onCancel={handlePasswordSetupCancel}
           />
-        )}
-
-        {currentView === 'vault-unlock' && vaultLocation && vaultSetupInfo?.vault_info && (
+        ) : null;
+      
+      case 'vault-unlock':
+        return vaultLocation && vaultSetupInfo?.vault_info ? (
           <VaultUnlock
             vaultPath={vaultLocation}
             vaultInfo={vaultSetupInfo.vault_info}
             onVaultUnlocked={handleVaultUnlocked}
             onCancel={handleVaultUnlockCancel}
           />
-        )}
-
-        {currentView === 'main-app' && vaultSetupInfo?.vault_info && sessionId && (
-          <div className="main-app">
-            <div className="app-toolbar">
-              <div className="vault-status">
-                <span className="vault-name">📝 {vaultSetupInfo.vault_info.name}</span>
-                {vaultSetupInfo.is_encrypted && (
-                  <span className="encryption-badge">🔐 Encrypted</span>
-                )}
-              </div>
-              <button className="logout-button" onClick={handleLogout}>
-                🚪 Logout
-              </button>
-            </div>
-            
-            <div className="notes-interface">
+        ) : null;
+      
+      case 'main-app':
+        return vaultSetupInfo?.vault_info && sessionId ? (
+          <div className="main-app-content">
+            <div className="welcome-header">
               <h2>Welcome to your secure vault!</h2>
               <p>Your vault is now unlocked and ready to use. This is where the main note-taking interface will be implemented.</p>
+            </div>
+            
+            <div className="dashboard-grid">
+              <div className="dashboard-card">
+                <h3>
+                  <span className="icon icon-file"></span>
+                  Recent Notes
+                </h3>
+                <p>No notes yet. Start by creating your first note!</p>
+                <button className="card-action-button">
+                  <span className="icon icon-file"></span>
+                  Create Note
+                </button>
+              </div>
               
-              <div className="session-info">
-                <h3>Session Information</h3>
-                <p><strong>Session ID:</strong> {sessionId.substring(0, 8)}...</p>
-                <p><strong>Vault:</strong> {vaultSetupInfo.vault_info.name}</p>
-                <p><strong>Encryption:</strong> ChaCha20Poly1305</p>
-                <p><strong>Status:</strong> Active</p>
+              <div className="dashboard-card">
+                <h3>
+                  <span className="icon icon-folder"></span>
+                  Folders
+                </h3>
+                <p>Organize your notes with folders and tags.</p>
+                <button className="card-action-button">
+                  <span className="icon icon-folder"></span>
+                  Create Folder
+                </button>
+              </div>
+              
+              <div className="dashboard-card">
+                <h3>
+                  <span className="icon icon-search"></span>
+                  Search
+                </h3>
+                <p>Find your notes quickly with full-text search.</p>
+                <button className="card-action-button">
+                  <span className="icon icon-search"></span>
+                  Search Notes
+                </button>
+              </div>
+            </div>
+            
+            <div className="session-info-card">
+              <h3>Session Information</h3>
+              <div className="info-grid">
+                <div className="info-item">
+                  <span className="label">Session ID:</span>
+                  <span className="value">{sessionId.substring(0, 8)}...</span>
+                </div>
+                <div className="info-item">
+                  <span className="label">Vault:</span>
+                  <span className="value">{vaultSetupInfo.vault_info.name}</span>
+                </div>
+                <div className="info-item">
+                  <span className="label">Encryption:</span>
+                  <span className="value">ChaCha20Poly1305</span>
+                </div>
+                <div className="info-item">
+                  <span className="label">Status:</span>
+                  <span className="value status-active">Active</span>
+                </div>
               </div>
             </div>
           </div>
-        )}
-
-        {currentView === 'home' && (
+        ) : null;
+      
+      case 'home':
+        return (
           <div className="home-view">
             <div className="welcome-section">
-              <h2>Welcome to Cocobolo! 🌰</h2>
+              <h2>Welcome to Cocobolo!</h2>
               <p>Your secure, encrypted note-taking companion</p>
               
               {vaultSetupInfo?.vault_info && (
@@ -256,7 +290,10 @@ function App() {
                       <h4>{vaultSetupInfo.vault_info.name}</h4>
                       <div className="vault-badges">
                         {vaultSetupInfo.is_encrypted && (
-                          <span className="encryption-badge">🔐 Encrypted</span>
+                          <span className="encryption-badge">
+                            <span className="icon icon-lock"></span>
+                            Encrypted
+                          </span>
                         )}
                         <span className="version-badge">v{vaultSetupInfo.vault_info.version}</span>
                       </div>
@@ -271,7 +308,8 @@ function App() {
                         className="unlock-vault-button primary"
                         onClick={() => setCurrentView('vault-unlock')}
                       >
-                        🔓 Unlock Vault
+                        <span className="icon icon-lock"></span>
+                        Unlock Vault
                       </button>
                     )}
                   </div>
@@ -308,9 +346,55 @@ function App() {
               )}
             </div>
           </div>
-        )}
-      </main>
-    </div>
+        );
+      
+      default:
+        return null;
+    }
+  };
+
+  // For setup views, use simple container layout
+  if (['vault-setup', 'password-setup', 'vault-unlock', 'home'].includes(currentView)) {
+    return (
+      <ThemeProvider>
+        <div className="container">
+          <header className="app-header">
+            <h1>
+              <span className="icon icon-lock"></span>
+              Cocobolo
+            </h1>
+            <p>Secure Note-Taking Application</p>
+            {appInfo && (
+              <div className="app-info">
+                <span>v{appInfo.version}</span>
+              </div>
+            )}
+          </header>
+
+          <main className="app-main">
+            {renderContent()}
+          </main>
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  // For main app, use full layout
+  return (
+    <ThemeProvider>
+      <MainLayout
+        {...(vaultSetupInfo?.vault_info && {
+          vaultInfo: {
+            name: vaultSetupInfo.vault_info.name,
+            isEncrypted: vaultSetupInfo.is_encrypted
+          }
+        })}
+        {...(sessionId && { sessionId })}
+        onLogout={handleLogout}
+      >
+        {renderContent()}
+      </MainLayout>
+    </ThemeProvider>
   );
 }
 
