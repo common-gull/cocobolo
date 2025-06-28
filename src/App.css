@@ -1,0 +1,269 @@
+.logo.vite:hover {
+  filter: drop-shadow(0 0 2em #747bff);
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafb);
+}
+:root {
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  color: #0f0f0f;
+  background-color: #f6f6f6;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+#root {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  min-height: 100vh;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.app-header {
+  text-align: center;
+  padding: 2rem 0;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 2rem;
+}
+
+.app-header h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0 0 1rem 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.app-description {
+  font-size: 1.2rem;
+  color: #555;
+  margin: 0.5rem 0;
+  font-weight: 400;
+}
+
+.app-version {
+  font-size: 0.9rem;
+  color: #888;
+  margin: 0;
+  font-family: 'Courier New', monospace;
+}
+
+.welcome-section {
+  background: #f8f9fa;
+  padding: 2rem;
+  border-radius: 12px;
+  border-left: 4px solid #667eea;
+}
+
+.welcome-section h2 {
+  color: #2c3e50;
+  margin-top: 0;
+  font-size: 1.8rem;
+}
+
+.welcome-section p {
+  color: #555;
+  line-height: 1.6;
+  font-size: 1.1rem;
+}
+
+.demo-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+}
+
+.demo-section h3 {
+  color: #2c3e50;
+  margin-top: 0;
+  font-size: 1.5rem;
+}
+
+.greet-form {
+  display: flex;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  flex-wrap: wrap;
+}
+
+.greet-form input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+  background-color: white;
+}
+
+.greet-form input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.greet-form button {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.greet-form button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.greet-form button:active {
+  transform: translateY(0);
+}
+
+.error-message {
+  background: #fee;
+  color: #c33;
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #c33;
+  margin-top: 1rem;
+}
+
+.success-message {
+  background: #efe;
+  color: #363;
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #363;
+  margin-top: 1rem;
+  font-weight: 500;
+}
+
+.loading {
+  text-align: center;
+  padding: 4rem;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.app-footer {
+  text-align: center;
+  padding: 2rem 0;
+  border-top: 1px solid #e0e0e0;
+  margin-top: 2rem;
+}
+
+.app-footer p {
+  color: #666;
+  font-size: 1rem;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #f6f6f6;
+    background-color: #2f2f2f;
+  }
+
+  .app-header {
+    border-bottom-color: #444;
+  }
+
+  .app-header h1 {
+    color: #f6f6f6;
+  }
+
+  .app-description {
+    color: #ccc;
+  }
+
+  .app-version {
+    color: #999;
+  }
+
+  .welcome-section {
+    background: #3a3a3a;
+    border-left-color: #667eea;
+  }
+
+  .welcome-section h2 {
+    color: #f6f6f6;
+  }
+
+  .welcome-section p {
+    color: #ccc;
+  }
+
+  .demo-section {
+    background: #3a3a3a;
+    border-color: #444;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  .demo-section h3 {
+    color: #f6f6f6;
+  }
+
+  .greet-form input {
+    background-color: #2f2f2f;
+    border-color: #555;
+    color: #f6f6f6;
+  }
+
+  .greet-form input:focus {
+    border-color: #667eea;
+  }
+
+  .app-footer {
+    border-top-color: #444;
+  }
+
+  .app-footer p {
+    color: #999;
+  }
+}
+
+@media (max-width: 600px) {
+  .container {
+    padding: 1rem;
+  }
+  
+  .app-header h1 {
+    font-size: 2rem;
+  }
+  
+  .greet-form {
+    flex-direction: column;
+  }
+  
+  .greet-form input,
+  .greet-form button {
+    width: 100%;
+  }
+}
