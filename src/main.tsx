@@ -14,8 +14,7 @@ import '@mantine/spotlight/styles.css';
 import Layout from './routes/layout';
 import Home from './routes/home';
 import VaultSelector from './routes/vault-selector';
-import VaultSetup from './routes/vault-setup';
-import PasswordSetup from './routes/password-setup';
+import VaultCreator from './routes/vault-creator';
 import VaultUnlock from './routes/vault-unlock';
 import AppLayout from './routes/app-layout';
 import App from './routes/app';
@@ -54,14 +53,9 @@ const router = createBrowserRouter([
         errorElement: <ErrorBoundary error={new Error("Home error")} />,
       },
       {
-        path: "vault-setup",
-        Component: VaultSetup,
-        errorElement: <ErrorBoundary error={new Error("Vault setup error")} />,
-      },
-      {
-        path: "password-setup",
-        Component: PasswordSetup,
-        errorElement: <ErrorBoundary error={new Error("Password setup error")} />,
+        path: "vault-creator",
+        Component: VaultCreator,
+        errorElement: <ErrorBoundary error={new Error("Vault creator error")} />,
       },
       {
         path: "vault-unlock",

@@ -54,17 +54,10 @@ export function VaultSelector({ onVaultSelected }: VaultSelectorProps) {
   const [favoriteVaults, setFavoriteVaults] = useState<KnownVault[]>([]);
   
   // Modal states
-  const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
   const [linkModalOpened, { open: openLinkModal, close: closeLinkModal }] = useDisclosure(false);
   const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false);
 
   // Clear form states when modals close
-  const handleCloseCreateModal = () => {
-    setNewVaultName('');
-    setNewVaultPath('');
-    closeCreateModal();
-  };
-
   const handleCloseLinkModal = () => {
     setNewVaultName('');
     setNewVaultPath('');
@@ -158,30 +151,8 @@ export function VaultSelector({ onVaultSelected }: VaultSelectorProps) {
     }
   };
 
-  const handleCreateVault = async () => {
-    if (!newVaultName.trim() || !newVaultPath.trim()) return;
-    
-    try {
-      const result = await api.addKnownVault({
-        name: newVaultName.trim(),
-        path: newVaultPath.trim(),
-      });
-      
-      if (result.success && result.vault_id) {
-        // Set the new vault as current
-        await api.setCurrentVault(result.vault_id);
-        
-        handleCloseCreateModal();
-        await loadVaults();
-        
-        // Navigate to password setup for the new vault
-        navigate(`/password-setup?vaultPath=${encodeURIComponent(newVaultPath)}`);
-      } else {
-        setError(result.error_message || 'Failed to create vault');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create vault');
-    }
+  const handleCreateVault = () => {
+    navigate('/vault-creator');
   };
 
   const handleLinkVault = async () => {
@@ -365,7 +336,7 @@ export function VaultSelector({ onVaultSelected }: VaultSelectorProps) {
         <Group justify="center" gap="md">
           <Button
             leftSection={<IconPlus size={16} />}
-            onClick={openCreateModal}
+            onClick={handleCreateVault}
             size="md"
           >
             Create New Vault
@@ -430,51 +401,7 @@ export function VaultSelector({ onVaultSelected }: VaultSelectorProps) {
         )}
       </Stack>
 
-      {/* Create Vault Modal */}
-      <Modal
-        opened={createModalOpened}
-        onClose={handleCloseCreateModal}
-        title="Create New Vault"
-        size="md"
-      >
-        <Stack gap="md">
-          <TextInput
-            label="Vault Name"
-            placeholder="My Secure Notes"
-            value={newVaultName}
-            onChange={(e) => setNewVaultName(e.target.value)}
-            required
-          />
-          
-          <Stack gap="xs">
-            <Text size="sm" fw={500}>Vault Location</Text>
-            <Group gap="sm">
-              <TextInput
-                placeholder="Select a directory..."
-                value={newVaultPath}
-                onChange={(e) => setNewVaultPath(e.target.value)}
-                style={{ flex: 1 }}
-                required
-              />
-              <Button onClick={handleSelectDirectory} variant="light">
-                Browse
-              </Button>
-            </Group>
-          </Stack>
 
-          <Group justify="flex-end" gap="sm">
-            <Button variant="light" onClick={handleCloseCreateModal}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleCreateVault}
-              disabled={!newVaultName.trim() || !newVaultPath.trim()}
-            >
-              Create Vault
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
 
       {/* Link Vault Modal */}
       <Modal

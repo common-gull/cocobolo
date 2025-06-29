@@ -140,7 +140,7 @@ export interface VaultUnlockState {
   rateLimitInfo: RateLimitInfo | null;
 }
 
-export type AppView = 'home' | 'vault-setup' | 'password-setup' | 'vault-unlock' | 'main-app' | 'create-note' | 'notes-list' | 'edit-note' | 'create-whiteboard' | 'edit-whiteboard';
+export type AppView = 'home' | 'vault-creator' | 'vault-unlock' | 'main-app' | 'create-note' | 'notes-list' | 'edit-note' | 'create-whiteboard' | 'edit-whiteboard';
 
 // Note types
 export type NoteType = 'text' | 'whiteboard';
