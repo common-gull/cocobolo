@@ -10,7 +10,7 @@ import {
 } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { api } from '../utils/api';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../hooks/useTheme';
 import type { Note } from '../types';
 
 // Lazy load the editor components for better performance

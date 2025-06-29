@@ -18,7 +18,7 @@ import {
   IconDots
 } from '@tabler/icons-react';
 import debounce from 'lodash.debounce';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../hooks/useTheme';
 import { api } from '../utils/api';
 import type { CreateNoteResult, SaveNoteResult, Note } from '../types';
 import { Icons } from './Icons';
@@ -199,9 +199,8 @@ export function WhiteboardEditor({
       
       const note = await api.loadNote(vaultPath, sessionId, noteId);
       
-      // Check if we're still supposed to be loading this note (prevent race condition)
+      // Check if noteId changed during loading to prevent race conditions
       if (currentNoteIdRef.current !== loadingNoteId) {
-        console.log('Race condition detected: noteId changed during load, aborting');
         return;
       }
       
@@ -313,7 +312,7 @@ export function WhiteboardEditor({
     // Check if we're still on the same note (prevent race condition)
     const currentNoteIdForSave = currentNoteIdRef.current;
     if (noteId !== currentNoteIdForSave) {
-      console.log('Auto-save cancelled: noteId changed during save operation');
+      
       return;
     }
     
@@ -349,7 +348,7 @@ export function WhiteboardEditor({
     try {
       // Double-check we're still on the same note before saving
       if (currentNoteIdRef.current !== currentNoteIdForSave) {
-        console.log('Auto-save cancelled: noteId changed during save preparation');
+        
         return;
       }
       
@@ -390,7 +389,7 @@ export function WhiteboardEditor({
       if (noteId && originalNoteRef.current) {
         // Final check before API call
         if (currentNoteIdRef.current !== currentNoteIdForSave) {
-          console.log('Auto-save cancelled: noteId changed before API call');
+
           return;
         }
         

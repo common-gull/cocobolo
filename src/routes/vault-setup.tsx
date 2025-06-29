@@ -12,8 +12,8 @@ export default function VaultSetup() {
       const setupInfo = await api.checkVaultSetupStatus(path);
       
       if (setupInfo.needs_password && !setupInfo.vault_info) {
-        // New vault needs password setup
-        navigate('/password-setup');
+        // New vault needs password setup - pass the path as search param
+        navigate(`/password-setup?vaultPath=${encodeURIComponent(path)}`);
       } else if (setupInfo.needs_password && setupInfo.vault_info) {
         // Existing encrypted vault needs unlock
         navigate('/vault-unlock');

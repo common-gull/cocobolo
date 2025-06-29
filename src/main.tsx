@@ -62,6 +62,7 @@ const router = createBrowserRouter([
         Component: VaultUnlock,
         errorElement: <ErrorBoundary error={new Error("Vault unlock error")} />,
       },
+      // Single AppLayout that handles both app and documents routes
       {
         Component: AppLayout,
         errorElement: <ErrorBoundary error={new Error("App layout error")} />,

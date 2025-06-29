@@ -1,13 +1,12 @@
 import { useSetAtom } from 'jotai';
 import { updateNoteAtom, deleteNoteAtom } from '../stores/notesStore';
 import type { Note, NoteMetadata } from '../types';
-import { useCallback } from 'react';
 
 export function useNoteUpdates() {
   const updateNote = useSetAtom(updateNoteAtom);
   const deleteNote = useSetAtom(deleteNoteAtom);
 
-  const handleNoteUpdated = useCallback((updatedNote: Note) => {
+  const handleNoteUpdated = (updatedNote: Note) => {
     const noteMetadata: NoteMetadata = {
       id: updatedNote.id,
       title: updatedNote.title,
@@ -20,7 +19,7 @@ export function useNoteUpdates() {
     };
     
     updateNote(noteMetadata);
-  }, [updateNote]);
+  };
 
   const handleNoteDeleted = async (vaultPath: string, sessionId: string, noteId: string): Promise<boolean> => {
     return await deleteNote({ vaultPath, sessionId, noteId });

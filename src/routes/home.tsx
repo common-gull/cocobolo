@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { 
   Container, 
   Paper, 
@@ -22,17 +23,29 @@ import {
   IconCheck
 } from '@tabler/icons-react';
 import { api } from '../utils/api';
+import { 
+  appLoadingAtom, 
+  appErrorAtom, 
+  currentVaultLocationAtom 
+} from '../stores/notesStore';
 import type { AppInfo, VaultSetupInfo } from '../types';
 
 export default function Home() {
   const navigate = useNavigate();
-  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
-  const [vaultLocation, setVaultLocation] = useState<string | null>(null);
-  const [vaultSetupInfo, setVaultSetupInfo] = useState<VaultSetupInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
+  // Use Jotai atoms for common state
+  const appLoading = useAtomValue(appLoadingAtom);
+  const appError = useAtomValue(appErrorAtom);
+  const vaultLocation = useAtomValue(currentVaultLocationAtom);
+  const setAppLoading = useSetAtom(appLoadingAtom);
+  const setAppError = useSetAtom(appErrorAtom);
+  const setVaultLocation = useSetAtom(currentVaultLocationAtom);
 
-  // Demo state
+  // Local state for page-specific data
+  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
+  const [vaultSetupInfo, setVaultSetupInfo] = useState<VaultSetupInfo | null>(null);
+
+  // Demo state (keeping local as it's page-specific)
   const [greetInput, setGreetInput] = useState('');
   const [greetResult, setGreetResult] = useState<string | null>(null);
   const [greetError, setGreetError] = useState<string | null>(null);
@@ -40,6 +53,9 @@ export default function Home() {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
+        setAppLoading(true);
+        setAppError(null);
+
         const [info, location] = await Promise.all([
           api.getAppInfo(),
           api.getCurrentVaultLocation(),
@@ -54,8 +70,8 @@ export default function Home() {
           setVaultSetupInfo(setupInfo);
           
           if (setupInfo.needs_password && !setupInfo.vault_info) {
-            // New vault needs password setup
-            navigate('/password-setup');
+            // New vault needs password setup - pass the path as search param
+            navigate(`/password-setup?vaultPath=${encodeURIComponent(location)}`);
           } else if (setupInfo.needs_password && setupInfo.vault_info) {
             // Existing encrypted vault needs unlock
             navigate('/vault-unlock');
@@ -68,14 +84,14 @@ export default function Home() {
           navigate('/vault-setup');
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load app data');
+        setAppError(err instanceof Error ? err.message : 'Failed to load app data');
       } finally {
-        setLoading(false);
+        setAppLoading(false);
       }
     };
 
     loadInitialData();
-  }, [navigate]);
+  }, [navigate, setAppLoading, setAppError, setVaultLocation]);
 
   const handleGreet = async () => {
     if (!greetInput.trim()) return;
@@ -96,7 +112,7 @@ export default function Home() {
     }
   };
 
-  if (loading) {
+  if (appLoading) {
     return (
       <Center h="100vh">
         <Stack align="center" gap="md">
@@ -107,11 +123,11 @@ export default function Home() {
     );
   }
 
-  if (error) {
+  if (appError) {
     return (
       <Container size="sm" mt="xl">
         <Alert icon={<IconAlertTriangle size={16} />} title="Error" color="red">
-          {error}
+          {appError}
         </Alert>
       </Container>
     );

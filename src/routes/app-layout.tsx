@@ -1,18 +1,35 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
-import { useSetAtom } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { api } from '../utils/api';
 import { MainLayout } from '../components/Layout/MainLayout';
 import { useNoteUpdates } from '../hooks/useNoteUpdates';
-import { addNoteAtom } from '../stores/notesStore';
-import type { VaultInfo, NoteMetadata } from '../types';
+import { 
+  addNoteAtom,
+  sessionIdAtom,
+  vaultInfoAtom,
+  vaultPathAtom,
+  hasVaultSessionAtom,
+  initializeVaultSessionAtom,
+  clearVaultSessionAtom,
+  appLoadingAtom
+} from '../stores/notesStore';
+import type { NoteMetadata } from '../types';
 
 export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [vaultInfo, setVaultInfo] = useState<VaultInfo | null>(null);
-  const [vaultPath, setVaultPath] = useState<string | null>(null);
+  const initializationRef = useRef(false);
+  
+  // Use Jotai atoms instead of local state
+  const sessionId = useAtomValue(sessionIdAtom);
+  const vaultInfo = useAtomValue(vaultInfoAtom);
+  const vaultPath = useAtomValue(vaultPathAtom);
+  const hasSession = useAtomValue(hasVaultSessionAtom);
+  const appLoading = useAtomValue(appLoadingAtom);
+  
+  const initializeSession = useSetAtom(initializeVaultSessionAtom);
+  const clearSession = useSetAtom(clearVaultSessionAtom);
   const { handleNoteUpdated, handleNoteDeleted } = useNoteUpdates();
   const addNote = useSetAtom(addNoteAtom);
 
@@ -28,45 +45,37 @@ export default function AppLayout() {
     }
   }, [location.pathname, navigate]);
 
+  // Initialize session on mount - only once using ref to prevent duplicates
   useEffect(() => {
-    // Get session info from sessionStorage
-    const storedSessionId = sessionStorage.getItem('sessionId');
-    const storedVaultInfo = sessionStorage.getItem('vaultInfo');
-    
-    if (storedSessionId && storedVaultInfo) {
-      setSessionId(storedSessionId);
-      setVaultInfo(JSON.parse(storedVaultInfo));
-    } else {
-      // No valid session, redirect to home
-      navigate('/');
-      return;
+    if (!initializationRef.current) {
+      initializationRef.current = true;
+      initializeSession();
     }
+  }, [initializeSession]);
 
-    // Get vault path
-    const loadVaultPath = async () => {
-      try {
-        const path = await api.getCurrentVaultLocation();
-        setVaultPath(path);
-      } catch (error) {
-        console.error('Failed to get vault path:', error);
+  // Handle navigation based on session state - simplified
+  useEffect(() => {
+    // Only redirect when we're certain there's no session and not loading
+    if (!appLoading && !hasSession) {
+      // Check if we have session data in storage that might not be loaded yet
+      const hasStoredSession = sessionStorage.getItem('sessionId') && sessionStorage.getItem('vaultInfo');
+      
+      if (!hasStoredSession) {
+        navigate('/', { replace: true });
       }
-    };
+    }
+  }, [appLoading, hasSession, navigate]);
 
-    loadVaultPath();
-  }, [navigate]);
-
-  // Session management
+  // Session management - check session status periodically
   useEffect(() => {
     if (!sessionId) return;
 
-    // Check session status periodically
     const checkSession = async () => {
       try {
         const isValid = await api.checkSessionStatus(sessionId);
         if (!isValid) {
-          // Session expired, clear storage and redirect
-          sessionStorage.removeItem('sessionId');
-          sessionStorage.removeItem('vaultInfo');
+          // Session expired, clear and redirect
+          await clearSession();
           navigate('/vault-unlock');
         }
       } catch (error) {
@@ -77,35 +86,24 @@ export default function AppLayout() {
     // Check session every 5 minutes
     const interval = setInterval(checkSession, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [sessionId, navigate]);
+  }, [sessionId, navigate, clearSession]);
 
   const handleLogout = async () => {
-    if (sessionId) {
-      try {
-        await api.closeVaultSession(sessionId);
-      } catch (error) {
-        console.error('Failed to logout:', error);
-      }
-    }
-    
-    // Clear session storage
-    sessionStorage.removeItem('sessionId');
-    sessionStorage.removeItem('vaultInfo');
-    
-    // Navigate to home
+    await clearSession();
     navigate('/');
   };
 
   const handleSelectNote = (noteId: string) => {
-    console.log('handleSelectNote called with noteId:', noteId);
     navigate(`/documents/${noteId}`);
   };
 
   const handleCreateNote = async () => {
+    if (!vaultPath || !sessionId) return;
+
     try {
       const result = await api.createNote(
-        vaultPath!,
-        sessionId!,
+        vaultPath,
+        sessionId,
         'Untitled',
         '',
         undefined,
@@ -114,7 +112,6 @@ export default function AppLayout() {
       );
 
       if (result.success && result.note) {
-        // Convert Note to NoteMetadata and add to store
         const noteMetadata: NoteMetadata = {
           id: result.note.id,
           title: result.note.title,
@@ -136,11 +133,12 @@ export default function AppLayout() {
   };
 
   const handleCreateWhiteboard = async () => {
-    console.log('handleCreateWhiteboard called - this should only happen when create button is clicked');
+    if (!vaultPath || !sessionId) return;
+
     try {
       const result = await api.createNote(
-        vaultPath!,
-        sessionId!,
+        vaultPath,
+        sessionId,
         'Untitled Whiteboard',
         '{}',
         undefined,
@@ -149,7 +147,6 @@ export default function AppLayout() {
       );
 
       if (result.success && result.note) {
-        // Convert Note to NoteMetadata and add to store
         const noteMetadata: NoteMetadata = {
           id: result.note.id,
           title: result.note.title,
@@ -170,19 +167,24 @@ export default function AppLayout() {
     }
   };
 
+  // Show loading while session is being initialized
+  if (appLoading) {
+    return null;
+  }
+
   // Don't render anything if we don't have session info yet
-  if (!sessionId || !vaultInfo || !vaultPath) {
+  if (!hasSession) {
     return null;
   }
 
   return (
     <MainLayout
       vaultInfo={{
-        name: vaultInfo.name,
-        isEncrypted: vaultInfo.is_encrypted,
+        name: vaultInfo!.name,
+        isEncrypted: vaultInfo!.is_encrypted,
       }}
-      sessionId={sessionId}
-      vaultPath={vaultPath}
+      sessionId={sessionId!}
+      vaultPath={vaultPath!}
       selectedNoteId={selectedNoteId}
       onLogout={handleLogout}
       onSelectNote={handleSelectNote}

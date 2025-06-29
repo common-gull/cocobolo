@@ -54,6 +54,10 @@ export interface PasswordStrength {
   score: number; // 0-4 strength score
   issues: string[];
   suggestions: string[];
+  feedback: {
+    suggestions: string[];
+    warning: string;
+  };
 }
 
 export interface VaultSetupInfo {
@@ -72,6 +76,16 @@ export interface PasswordSetupState {
   error: string | null;
   showPassword: boolean;
   showConfirmPassword: boolean;
+}
+
+export interface VaultPasswordSetupState {
+  vaultName: string;
+  password: string;
+  confirmPassword: string;
+  isCreating: boolean;
+  error: string | null;
+  showPassword: boolean;
+  passwordStrength: PasswordStrength | null;
 }
 
 export interface VaultUnlockResult {

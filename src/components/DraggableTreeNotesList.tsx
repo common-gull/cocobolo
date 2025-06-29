@@ -221,10 +221,7 @@ function DraggableNote({
   const paddingLeft = (level + 1) * 16;
 
   const handleClick = () => {
-    console.log('Note clicked:', note.title, 'isDragging:', isDragging, 'note.id:', note.id);
-    // Prevent click during drag
     if (!isDragging) {
-      console.log('Calling onSelectNote with:', note.id);
       onSelectNote?.(note.id);
     }
   };

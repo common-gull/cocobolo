@@ -22,7 +22,7 @@ import {
   IconFolder,
   IconLock 
 } from '@tabler/icons-react';
-import { useVaultLocation } from '../hooks/useVaultLocation';
+import { useVaultLocationJotai } from '../hooks/useVaultLocationJotai';
 
 interface VaultLocationSelectorProps {
   onLocationSet?: (path: string) => void;
@@ -35,22 +35,22 @@ export function VaultLocationSelector({ onLocationSet }: VaultLocationSelectorPr
     isValidating,
     validationResult,
     error,
-    isLoading,
+    hasChanges,
+    canConfirm,
     selectDirectory,
     confirmSelection,
     clearSelection,
-    hasChanges,
-    canConfirm,
-  } = useVaultLocation();
+  } = useVaultLocationJotai();
 
   const handleConfirm = async () => {
-    await confirmSelection();
-    if (selectedPath && onLocationSet) {
+    const success = await confirmSelection();
+    if (success && selectedPath && onLocationSet) {
       onLocationSet(selectedPath);
     }
   };
 
-  if (isLoading) {
+  // Show loading state while initializing
+  if (currentVaultLocation === null && !error) {
     return (
       <Container size="md" py="xl">
         <Paper p="xl" radius="lg" shadow="md">
