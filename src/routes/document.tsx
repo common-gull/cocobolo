@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from 'react';
+import { useEffect, useState, lazy, Suspense, useCallback } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router';
 import { 
   Container, 
@@ -47,6 +47,12 @@ export default function Document() {
   useEffect(() => {
     if (!noteId || !sessionId || !vaultPath) return;
 
+    // Only load the note if it's different from the currently loaded one
+    if (note && note.id === noteId) {
+      setLoading(false);
+      return;
+    }
+
     const loadNote = async () => {
       try {
         setLoading(true);
@@ -61,17 +67,17 @@ export default function Document() {
     };
 
     loadNote();
-  }, [noteId, sessionId, vaultPath]);
+  }, [noteId, sessionId, vaultPath, note]);
 
-  const handleCloseEditor = () => {
+  const handleCloseEditor = useCallback(() => {
     navigate('/app');
-  };
+  }, [navigate]);
 
-  const handleEditorError = (errorMessage: string) => {
+  const handleEditorError = useCallback((errorMessage: string) => {
     setError(errorMessage);
-  };
+  }, []);
 
-  const handleNoteDeletedLocal = async (noteIdToDelete: string) => {
+  const handleNoteDeletedLocal = useCallback(async (noteIdToDelete: string) => {
     if (vaultPath && sessionId) {
       const success = await handleNoteDeleted(vaultPath, sessionId, noteIdToDelete);
       if (success) {
@@ -79,7 +85,7 @@ export default function Document() {
         navigate('/app', { replace: true });
       }
     }
-  };
+  }, [vaultPath, sessionId, handleNoteDeleted, navigate]);
 
   if (loading) {
     return (

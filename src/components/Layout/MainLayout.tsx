@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useCallback } from 'react';
 import { 
   AppShell, 
   Group, 
@@ -21,6 +21,7 @@ import {
 } from '@tabler/icons-react';
 import { useTheme } from '../../hooks/useTheme';
 import { DraggableTreeNotesList } from '../DraggableTreeNotesList';
+import React from 'react';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -39,7 +40,7 @@ interface MainLayoutProps {
   showSidebar?: boolean;
 }
 
-export function MainLayout({ 
+export const MainLayout = React.memo(function MainLayout({ 
   children, 
   vaultInfo, 
   sessionId, 
@@ -56,11 +57,11 @@ export function MainLayout({
   const { theme, setTheme } = useTheme();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
+  const handleThemeChange = useCallback((newTheme: 'light' | 'dark' | 'system') => {
     setTheme(newTheme);
-  };
+  }, [setTheme]);
 
-  const getThemeIcon = () => {
+  const getThemeIcon = useCallback(() => {
     switch (theme) {
       case 'light':
         return <IconSun size={16} />;
@@ -71,9 +72,9 @@ export function MainLayout({
       default:
         return <IconDeviceDesktop size={16} />;
     }
-  };
+  }, [theme]);
 
-  const getThemeLabel = () => {
+  const getThemeLabel = useCallback(() => {
     switch (theme) {
       case 'light':
         return 'Light';
@@ -84,13 +85,27 @@ export function MainLayout({
       default:
         return 'System';
     }
-  };
+  }, [theme]);
 
-  const handleCreateNote = () => {
+  const handleCreateNote = useCallback(() => {
     if (onCreateNote) {
       onCreateNote();
     }
-  };
+  }, [onCreateNote]);
+
+  const handleToggleSidebar = useCallback(() => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  }, [sidebarCollapsed]);
+
+  const handleThemeToggle = useCallback(() => {
+    const themes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system'];
+    const currentIndex = themes.indexOf(theme);
+    const nextIndex = (currentIndex + 1) % themes.length;
+    const nextTheme = themes[nextIndex];
+    if (nextTheme) {
+      handleThemeChange(nextTheme);
+    }
+  }, [theme, handleThemeChange]);
 
   return (
     <AppShell
@@ -109,7 +124,7 @@ export function MainLayout({
             {showSidebar && (
               <Burger
                 opened={!sidebarCollapsed}
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                onClick={handleToggleSidebar}
                 size="sm"
               />
             )}
@@ -137,15 +152,7 @@ export function MainLayout({
             <Tooltip label={`Theme: ${getThemeLabel()}`}>
               <ActionIcon
                 variant="light"
-                onClick={() => {
-                  const themes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system'];
-                  const currentIndex = themes.indexOf(theme);
-                  const nextIndex = (currentIndex + 1) % themes.length;
-                  const nextTheme = themes[nextIndex];
-                  if (nextTheme) {
-                    handleThemeChange(nextTheme);
-                  }
-                }}
+                onClick={handleThemeToggle}
               >
                 {getThemeIcon()}
               </ActionIcon>
@@ -203,4 +210,4 @@ export function MainLayout({
       </AppShell.Main>
     </AppShell>
   );
-} 
+}); 

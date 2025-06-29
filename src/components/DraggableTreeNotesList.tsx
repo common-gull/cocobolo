@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { Menu, rem, Modal, Button, Text, Group } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
@@ -60,7 +60,7 @@ interface DragItem {
 }
 
 // Draggable and droppable folder component
-function DraggableFolder({ 
+const DraggableFolder = React.memo(function DraggableFolder({ 
   folder, 
   level, 
   selectedNoteId, 
@@ -155,7 +155,7 @@ function DraggableFolder({
       )}
     </div>
   );
-}
+});
 
 // Droppable root area component
 function DroppableRoot({ children, overId }: { children: React.ReactNode; overId?: UniqueIdentifier | null | undefined }) {
@@ -192,7 +192,7 @@ function DroppableRoot({ children, overId }: { children: React.ReactNode; overId
 }
 
 // Draggable note component
-function DraggableNote({ 
+const DraggableNote = React.memo(function DraggableNote({ 
   note, 
   level, 
   selectedNoteId, 
@@ -250,9 +250,10 @@ function DraggableNote({
       )}
     </div>
   );
-}
+});
 
-export function DraggableTreeNotesList({ 
+// Memoize the main component to prevent unnecessary re-renders
+export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList({ 
   vaultPath, 
   sessionId, 
   selectedNoteId, 
@@ -269,16 +270,6 @@ export function DraggableTreeNotesList({
   const addFolder = useSetAtom(addFolderAtom);
 
   // Local state
-  const [folderTree, setFolderTree] = useState<FolderNode>({ 
-    id: 'root',
-    name: 'Root', 
-    path: '', 
-    children: [], 
-    notes: [], 
-    isExpanded: true,
-    type: 'folder'
-  });
-
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [dragItem, setDragItem] = useState<DragItem | null>(null);
@@ -321,45 +312,8 @@ export function DraggableTreeNotesList({
     })
   );
 
-  // Load notes on mount
-  useEffect(() => {
-    if (vaultPath && sessionId) {
-      loadNotes({ vaultPath, sessionId });
-    }
-  }, [vaultPath, sessionId, loadNotes]);
-
-  // Rebuild folder tree when notes or folders change
-  useEffect(() => {
-    const newFolderTree = buildFolderTree(notes, folders);
-    setFolderTree(newFolderTree);
-  }, [notes, folders, expandedFolders]);
-
-  // Close context menu on escape key or outside click
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setContextMenu(prev => ({ ...prev, opened: false }));
-      }
-    };
-
-    const handleClick = () => {
-      setContextMenu(prev => ({ ...prev, opened: false }));
-    };
-
-    if (contextMenu.opened) {
-      document.addEventListener('keydown', handleKeyDown);
-      document.addEventListener('click', handleClick);
-      return () => {
-        document.removeEventListener('keydown', handleKeyDown);
-        document.removeEventListener('click', handleClick);
-      };
-    }
-
-    return () => {}; // Return empty cleanup function when not opened
-  }, [contextMenu.opened]);
-
-  // Build the folder tree with alphabetical sorting
-  const buildFolderTree = (notes: NoteMetadata[], virtualFolders: string[]): FolderNode => {
+  // Memoize the buildFolderTree function to prevent unnecessary recalculations
+  const buildFolderTree = useCallback((notes: NoteMetadata[], virtualFolders: string[]): FolderNode => {
     const root: FolderNode = { 
       id: 'root',
       name: 'Root', 
@@ -431,11 +385,45 @@ export function DraggableTreeNotesList({
     
     sortFolder(root);
     return root;
-  };
+  }, [expandedFolders]);
 
+  // Memoize the folder tree to prevent unnecessary rebuilds
+  const folderTree = useMemo(() => {
+    return buildFolderTree(notes, folders);
+  }, [buildFolderTree, notes, folders]);
 
+  // Load notes on mount
+  useEffect(() => {
+    if (vaultPath && sessionId) {
+      loadNotes({ vaultPath, sessionId });
+    }
+  }, [vaultPath, sessionId, loadNotes]);
 
-  const toggleFolder = (folderPath: string) => {
+  // Close context menu on escape key or outside click
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setContextMenu(prev => ({ ...prev, opened: false }));
+      }
+    };
+
+    const handleClick = () => {
+      setContextMenu(prev => ({ ...prev, opened: false }));
+    };
+
+    if (contextMenu.opened) {
+      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('click', handleClick);
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('click', handleClick);
+      };
+    }
+
+    return () => {}; // Return empty cleanup function when not opened
+  }, [contextMenu.opened]);
+
+  const toggleFolder = useCallback((folderPath: string) => {
     setExpandedFolders(prev => {
       const newSet = new Set(prev);
       if (newSet.has(folderPath)) {
@@ -445,21 +433,21 @@ export function DraggableTreeNotesList({
       }
       return newSet;
     });
-  };
+  }, []);
 
-  const expandFolder = (folderPath: string) => {
+  const expandFolder = useCallback((folderPath: string) => {
     setExpandedFolders(prev => {
       const newSet = new Set(prev);
       newSet.add(folderPath);
       return newSet;
     });
-  };
+  }, []);
 
-  const handleNoteClick = (noteId: string) => {
+  const handleNoteClick = useCallback((noteId: string) => {
     if (onSelectNote) {
       onSelectNote(noteId);
     }
-  };
+  }, [onSelectNote]);
 
   const handleCreateFolder = async () => {
     const folderName = prompt('Enter folder name:');
@@ -850,4 +838,4 @@ export function DraggableTreeNotesList({
       </DragOverlay>
     </DndContext>
   );
-} 
+}); 
