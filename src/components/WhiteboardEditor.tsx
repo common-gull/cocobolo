@@ -162,7 +162,7 @@ export function WhiteboardEditor({
   onNoteUpdated,
   onNoteDeleted
 }: WhiteboardEditorProps) {
-  const { theme } = useTheme();
+  const { effectiveTheme } = useTheme();
   const excalidrawRef = useRef<any>(null);
   
   // State for UI
@@ -214,7 +214,7 @@ export function WhiteboardEditor({
               elements: whiteboardData.elements || [],
               appState: {
                 ...whiteboardData.appState,
-                theme: theme === 'dark' ? 'dark' : 'light'
+                theme: effectiveTheme === 'dark' ? 'dark' : 'light'
               }
             });
             hasInitialContentRef.current = whiteboardData.elements && whiteboardData.elements.length > 0;
@@ -243,7 +243,7 @@ export function WhiteboardEditor({
         onError(errorMessage);
       }
     }
-  }, [noteId, vaultPath, sessionId, theme, onError]);
+  }, [noteId, vaultPath, sessionId, effectiveTheme, onError]);
 
   // Reset state when noteId changes
   useEffect(() => {
@@ -522,7 +522,7 @@ export function WhiteboardEditor({
               handleWhiteboardChange();
             }
           }}
-          theme={theme === 'dark' ? 'dark' : 'light'}
+          theme={effectiveTheme === 'dark' ? 'dark' : 'light'}
         />
       </div>
     </div>
