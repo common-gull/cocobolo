@@ -351,39 +351,66 @@ export function VaultSelector({ onVaultSelected }: VaultSelectorProps) {
           </Button>
         </Group>
 
-        {/* Recent Vaults */}
-        {recentVaults.length > 0 && (
+        {/* Favorite Vaults - Show at the top */}
+        {favoriteVaults.length > 0 && (
           <Stack gap="md">
-            <Title order={3}>Recent Vaults</Title>
-            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-              {recentVaults.map((vault) => (
-                <VaultCard key={vault.id} vault={vault} />
-              ))}
-            </SimpleGrid>
+            <Group gap="sm" justify="center">
+              <IconStarFilled size={20} color="gold" />
+              <Title order={3}>Favorite Vaults</Title>
+            </Group>
+            <Group justify="center">
+              <SimpleGrid 
+                cols={{ base: 1, sm: Math.min(2, favoriteVaults.length), md: Math.min(3, favoriteVaults.length) }} 
+                spacing="md"
+                style={{ maxWidth: favoriteVaults.length === 1 ? '400px' : favoriteVaults.length === 2 ? '800px' : '100%' }}
+              >
+                {favoriteVaults.map((vault) => (
+                  <VaultCard key={vault.id} vault={vault} />
+                ))}
+              </SimpleGrid>
+            </Group>
           </Stack>
         )}
 
-        {/* Favorite Vaults */}
-        {favoriteVaults.length > 0 && (
+        {/* Recent Vaults */}
+        {recentVaults.length > 0 && (
           <Stack gap="md">
-            <Title order={3}>Favorite Vaults</Title>
-            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-              {favoriteVaults.map((vault) => (
-                <VaultCard key={vault.id} vault={vault} />
-              ))}
-            </SimpleGrid>
+            <Group gap="sm" justify="center">
+              <IconClock size={20} />
+              <Title order={3}>Recent Vaults</Title>
+            </Group>
+            <Group justify="center">
+              <SimpleGrid 
+                cols={{ base: 1, sm: Math.min(2, recentVaults.length), md: Math.min(3, recentVaults.length) }} 
+                spacing="md"
+                style={{ maxWidth: recentVaults.length === 1 ? '400px' : recentVaults.length === 2 ? '800px' : '100%' }}
+              >
+                {recentVaults.map((vault) => (
+                  <VaultCard key={vault.id} vault={vault} />
+                ))}
+              </SimpleGrid>
+            </Group>
           </Stack>
         )}
 
         {/* All Vaults */}
         {knownVaults.length > 0 && (
           <Stack gap="md">
-            <Title order={3}>All Vaults</Title>
-            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-              {knownVaults.map((vault) => (
-                <VaultCard key={vault.id} vault={vault} />
-              ))}
-            </SimpleGrid>
+            <Group gap="sm" justify="center">
+              <IconFolder size={20} />
+              <Title order={3}>All Vaults</Title>
+            </Group>
+            <Group justify="center">
+              <SimpleGrid 
+                cols={{ base: 1, sm: Math.min(2, knownVaults.length), md: Math.min(3, knownVaults.length) }} 
+                spacing="md"
+                style={{ maxWidth: knownVaults.length === 1 ? '400px' : knownVaults.length === 2 ? '800px' : '100%' }}
+              >
+                {knownVaults.map((vault) => (
+                  <VaultCard key={vault.id} vault={vault} />
+                ))}
+              </SimpleGrid>
+            </Group>
           </Stack>
         )}
 
