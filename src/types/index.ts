@@ -40,7 +40,6 @@ export interface KnownVault {
   id: string;
   name: string;
   path: string;
-  is_encrypted: boolean;
   created_at: string;
   last_accessed?: string;
   is_favorite: boolean;
@@ -49,7 +48,6 @@ export interface KnownVault {
 export interface AddVaultRequest {
   name: string;
   path: string;
-  is_encrypted: boolean;
 }
 
 export interface AddVaultResult {
@@ -92,10 +90,6 @@ export interface PasswordStrength {
   score: number; // 0-4 strength score
   issues: string[];
   suggestions: string[];
-  feedback: {
-    suggestions: string[];
-    warning: string;
-  };
 }
 
 export interface VaultSetupInfo {

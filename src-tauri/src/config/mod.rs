@@ -24,19 +24,17 @@ pub struct KnownVault {
     pub id: String,
     pub name: String,
     pub path: PathBuf,
-    pub is_encrypted: bool,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub last_accessed: Option<chrono::DateTime<chrono::Utc>>,
     pub is_favorite: bool,
 }
 
 impl KnownVault {
-    pub fn new(name: String, path: PathBuf, is_encrypted: bool) -> Self {
+    pub fn new(name: String, path: PathBuf) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
             name,
             path,
-            is_encrypted,
             created_at: chrono::Utc::now(),
             last_accessed: None,
             is_favorite: false,
@@ -191,7 +189,7 @@ impl AppConfig {
                     .unwrap_or("Migrated Vault")
                     .to_string();
                 
-                let known_vault = KnownVault::new(vault_name, path, false); // Assume not encrypted for migration
+                let known_vault = KnownVault::new(vault_name, path);
                 new_config.known_vaults.push(known_vault.clone());
                 new_config.current_vault_id = Some(known_vault.id);
             }
@@ -217,7 +215,7 @@ impl AppConfig {
                             .unwrap_or("Migrated Vault")
                             .to_string();
                         
-                        let known_vault = KnownVault::new(vault_name, path, false); // Assume not encrypted for migration
+                        let known_vault = KnownVault::new(vault_name, path);
                         self.known_vaults.push(known_vault.clone());
                         self.current_vault_id = Some(known_vault.id);
                         
@@ -239,7 +237,7 @@ impl AppConfig {
     }
 
     /// Add a new known vault
-    pub fn add_known_vault(&mut self, name: String, path: PathBuf, is_encrypted: bool) -> Result<String, ConfigError> {
+    pub fn add_known_vault(&mut self, name: String, path: PathBuf) -> Result<String, ConfigError> {
         // Validate that the path exists and is a directory
         if !path.exists() {
             return Err(ConfigError::InvalidVaultPath(
@@ -274,7 +272,7 @@ impl AppConfig {
             }
         }
 
-        let known_vault = KnownVault::new(name, path, is_encrypted);
+        let known_vault = KnownVault::new(name, path);
         let vault_id = known_vault.id.clone();
         self.known_vaults.push(known_vault);
         
@@ -418,7 +416,7 @@ impl AppConfig {
             .unwrap_or("Default Vault")
             .to_string();
         
-        let vault_id = self.add_known_vault(vault_name, path, false)?;
+        let vault_id = self.add_known_vault(vault_name, path)?;
         self.set_current_vault(Some(vault_id))?;
         Ok(())
     }

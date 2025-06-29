@@ -216,9 +216,9 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
                   color={getPasswordStrengthColor(state.passwordStrength.score)}
                   size="sm"
                 />
-                {state.passwordStrength.feedback.suggestions.length > 0 && (
+                {state.passwordStrength.suggestions.length > 0 && (
                   <List size="sm" mt="xs" c="dimmed">
-                    {state.passwordStrength.feedback.suggestions.map((suggestion, index) => (
+                    {state.passwordStrength.suggestions.map((suggestion, index) => (
                       <List.Item key={index}>{suggestion}</List.Item>
                     ))}
                   </List>

@@ -107,7 +107,6 @@ pub struct SaveNoteResult {
 pub struct AddVaultRequest {
     pub name: String,
     pub path: String,
-    pub is_encrypted: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -217,7 +216,7 @@ async fn set_vault_location(path: String) -> Result<(), AppError> {
             .unwrap_or("Vault")
             .to_string();
         
-        let vault_id = config.add_known_vault(vault_name, path_buf, false)?;
+        let vault_id = config.add_known_vault(vault_name, path_buf)?;
         config.set_current_vault(Some(vault_id))?;
     }
     
@@ -244,7 +243,7 @@ async fn get_current_vault_location() -> Result<Option<String>, AppError> {
 async fn add_known_vault(request: AddVaultRequest) -> Result<AddVaultResult, AppError> {
     let mut config = AppConfig::load()?;
     
-    match config.add_known_vault(request.name, std::path::PathBuf::from(request.path), request.is_encrypted) {
+    match config.add_known_vault(request.name, std::path::PathBuf::from(request.path)) {
         Ok(vault_id) => {
             config.save()?;
             Ok(AddVaultResult {
