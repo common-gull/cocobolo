@@ -93,8 +93,6 @@ export const loadNotesAtom = atom(
         api.getFoldersList(vaultPath, sessionId)
       ]);
       
-
-      
       // Sort notes by creation date (newest first)
       const sortedNotes = notes.sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()

@@ -39,6 +39,7 @@ interface DraggableTreeNotesListProps {
   selectedNoteId?: string;
   onSelectNote?: (noteId: string) => void;
   onCreateNote?: () => void;
+  onCreateWhiteboard?: () => void;
 }
 
 interface FolderNode {
@@ -230,7 +231,11 @@ function DraggableNote({
       {...attributes}
       {...listeners}
     >
-      <Icons.file size="sm" />
+      {note.note_type === 'whiteboard' ? (
+        <Icons.whiteboard size="sm" />
+      ) : (
+        <Icons.file size="sm" />
+      )}
       <span className="tree-note-title">{note.title}</span>
       {note.tags.length > 0 && (
         <span className="tree-note-tags">({note.tags.length})</span>
@@ -244,7 +249,8 @@ export function DraggableTreeNotesList({
   sessionId, 
   selectedNoteId, 
   onSelectNote,
-  onCreateNote
+  onCreateNote,
+  onCreateWhiteboard
 }: DraggableTreeNotesListProps) {
   // Jotai state
   const notes = useAtomValue(notesAtom);
@@ -645,7 +651,11 @@ export function DraggableTreeNotesList({
       
       return (
         <div className="tree-note-item selected drag-overlay">
-          <Icons.file size="sm" />
+          {note.note_type === 'whiteboard' ? (
+            <Icons.whiteboard size="sm" />
+          ) : (
+            <Icons.file size="sm" />
+          )}
           <span className="tree-note-title">{note.title}</span>
         </div>
       );
@@ -719,6 +729,9 @@ export function DraggableTreeNotesList({
           <div className="tree-actions">
             <button className="tree-action-button" onClick={onCreateNote} title="Create New Note">
               <Icons.fileText size="sm" />
+            </button>
+            <button className="tree-action-button" onClick={onCreateWhiteboard} title="Create New Whiteboard">
+              <Icons.whiteboard size="sm" />
             </button>
             <button className="tree-action-button" onClick={handleCreateFolder} title="Create New Folder">
               <Icons.folderPlus size="sm" />

@@ -34,6 +34,7 @@ interface MainLayoutProps {
   onLogout?: () => void;
   onSelectNote?: (noteId: string) => void;
   onCreateNote?: () => void;
+  onCreateWhiteboard?: () => void;
   onNavigate?: (view: string) => void;
   showSidebar?: boolean;
 }
@@ -47,8 +48,11 @@ export function MainLayout({
   onLogout,
   onSelectNote,
   onCreateNote,
+  onCreateWhiteboard,
   showSidebar = true 
 }: MainLayoutProps) {
+
+  
   const { theme, setTheme } = useTheme();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -175,6 +179,7 @@ export function MainLayout({
                     {...(selectedNoteId && { selectedNoteId })}
                     {...(onSelectNote && { onSelectNote })}
                     onCreateNote={handleCreateNote}
+                    onCreateWhiteboard={onCreateWhiteboard || (() => {})}
                   />
                 </Box>
               )}

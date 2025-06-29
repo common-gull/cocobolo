@@ -94,13 +94,17 @@ export interface VaultUnlockState {
   rateLimitInfo: RateLimitInfo | null;
 }
 
-export type AppView = 'home' | 'vault-setup' | 'password-setup' | 'vault-unlock' | 'main-app' | 'create-note' | 'notes-list' | 'edit-note';
+export type AppView = 'home' | 'vault-setup' | 'password-setup' | 'vault-unlock' | 'main-app' | 'create-note' | 'notes-list' | 'edit-note' | 'create-whiteboard' | 'edit-whiteboard';
+
+// Note types
+export type NoteType = 'text' | 'whiteboard';
 
 // Note-related types
 export interface Note {
   id: string;
   title: string;
   content: string;
+  note_type: NoteType;
   created_at: string;
   updated_at: string;
   tags: string[];
@@ -110,6 +114,7 @@ export interface Note {
 export interface NoteMetadata {
   id: string;
   title: string;
+  note_type: NoteType;
   created_at: string;
   updated_at: string;
   tags: string[];

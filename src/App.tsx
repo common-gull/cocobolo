@@ -27,6 +27,7 @@ import { VaultPasswordSetup } from './components/VaultPasswordSetup';
 import { VaultUnlock } from './components/VaultUnlock';
 
 import { MarkdownEditor } from './components/MarkdownEditor';
+import { WhiteboardEditor } from './components/WhiteboardEditor';
 import { MainLayout } from './components/Layout/MainLayout';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 
@@ -231,7 +232,8 @@ function AppContent() {
         'Untitled Note',
         '',
         undefined,
-        undefined
+        undefined,
+        'text'
       );
 
       if (result.success && result.note) {
@@ -239,6 +241,7 @@ function AppContent() {
         const noteMetadata: NoteMetadata = {
           id: result.note.id,
           title: result.note.title,
+          note_type: result.note.note_type,
           content_preview: result.note.content.substring(0, 100),
           created_at: result.note.created_at,
           updated_at: result.note.updated_at,
@@ -256,6 +259,11 @@ function AppContent() {
     }
   };
 
+  const handleCreateWhiteboard = () => {
+    if (!vaultLocation || !sessionId) return;
+    setCurrentView('create-whiteboard');
+  };
+
   const handleSelectNote = async (noteId: string) => {
     if (!vaultLocation || !sessionId) return;
 
@@ -269,10 +277,46 @@ function AppContent() {
     try {
       const note = await api.loadNote(vaultLocation, sessionId, noteId);
       setCurrentNote(note);
-      setCurrentView('edit-note');
+      
+      // Navigate to appropriate editor based on note type
+      if (note.note_type === 'whiteboard') {
+        setCurrentView('edit-whiteboard');
+      } else {
+        setCurrentView('edit-note');
+      }
     } catch (error) {
       console.error('Failed to load note:', error);
     }
+  };
+
+  const handleWhiteboardSaved = async (noteId: string) => {
+    if (!vaultLocation || !sessionId) return;
+    
+    try {
+      // Load the saved note and add to store
+      const note = await api.loadNote(vaultLocation, sessionId, noteId);
+      const noteMetadata: NoteMetadata = {
+        id: note.id,
+        title: note.title,
+        note_type: note.note_type,
+        content_preview: 'Whiteboard',
+        created_at: note.created_at,
+        updated_at: note.updated_at,
+        tags: note.tags,
+        ...(note.folder_path && { folder_path: note.folder_path })
+      };
+      addNote(noteMetadata);
+      
+      // Set the current note and navigate to edit the new whiteboard
+      setCurrentNote(note);
+      setCurrentView('edit-whiteboard');
+    } catch (error) {
+      console.error('Failed to load created whiteboard:', error);
+    }
+  };
+
+  const handleWhiteboardCancel = () => {
+    setCurrentView('main-app');
   };
 
   const handleCloseEditor = () => {
@@ -489,6 +533,41 @@ function AppContent() {
       case 'edit-note':
         return <MarkdownEditorWrapper />;
       
+      case 'create-whiteboard':
+        return vaultLocation && sessionId ? (
+          <WhiteboardEditor
+            vaultPath={vaultLocation}
+            sessionId={sessionId}
+            onSaved={handleWhiteboardSaved}
+            onCancel={handleWhiteboardCancel}
+            onNoteUpdated={handleNoteUpdated}
+            onError={handleEditorError}
+          />
+        ) : null;
+      
+      case 'edit-whiteboard':
+        return currentNote && vaultLocation && sessionId ? (
+          <WhiteboardEditor
+            vaultPath={vaultLocation}
+            sessionId={sessionId}
+            noteId={currentNote.id}
+            onSaved={() => setCurrentView('main-app')}
+            onCancel={() => setCurrentView('main-app')}
+            onNoteUpdated={handleNoteUpdated}
+            onError={handleEditorError}
+            onNoteDeleted={async (noteId: string) => {
+              if (vaultLocation && sessionId) {
+                const success = await handleNoteDeleted(vaultLocation, sessionId, noteId);
+                if (success) {
+                  // Navigate back to main view after deletion
+                  setCurrentNote(null);
+                  setCurrentView('main-app');
+                }
+              }
+            }}
+          />
+        ) : null;
+      
       default:
         return null;
     }
@@ -538,6 +617,7 @@ function AppContent() {
         onLogout={handleLogout}
         onSelectNote={handleSelectNote}
         onCreateNote={handleCreateNote}
+        onCreateWhiteboard={handleCreateWhiteboard}
         onNavigate={handleNavigate}
       >
         {renderContent()}

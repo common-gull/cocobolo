@@ -73,6 +73,8 @@ pub struct Note {
     pub id: String,
     pub title: String,
     pub content: String,
+    #[serde(default = "default_note_type")]
+    pub note_type: String, // "text" or "whiteboard"
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
     pub tags: Vec<String>,
@@ -86,6 +88,21 @@ impl Note {
             id: uuid::Uuid::new_v4().to_string(),
             title,
             content: content.unwrap_or_default(),
+            note_type: "text".to_string(),
+            created_at: now,
+            updated_at: now,
+            tags: Vec::new(),
+            folder_path: None,
+        }
+    }
+
+    pub fn new_with_type(title: String, content: Option<String>, note_type: String) -> Self {
+        let now = chrono::Utc::now();
+        Self {
+            id: uuid::Uuid::new_v4().to_string(),
+            title,
+            content: content.unwrap_or_default(),
+            note_type,
             created_at: now,
             updated_at: now,
             tags: Vec::new(),
@@ -109,11 +126,17 @@ impl Note {
 pub struct NoteMetadata {
     pub id: String,
     pub title: String,
+    #[serde(default = "default_note_type")]
+    pub note_type: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
     pub tags: Vec<String>,
     pub folder_path: Option<String>,
     pub content_preview: String,
+}
+
+fn default_note_type() -> String {
+    "text".to_string()
 }
 
 impl From<&Note> for NoteMetadata {
@@ -127,6 +150,7 @@ impl From<&Note> for NoteMetadata {
         Self {
             id: note.id.clone(),
             title: note.title.clone(),
+            note_type: note.note_type.clone(),
             created_at: note.created_at,
             updated_at: note.updated_at,
             tags: note.tags.clone(),
@@ -575,9 +599,10 @@ impl VaultManager {
     /// Get session by ID
     pub fn get_session(session_id: &str) -> Option<VaultSession> {
         let mut sessions = SESSIONS.lock().unwrap();
+        
         if let Some(session) = sessions.get_mut(session_id) {
             // Check if session is expired (30 minutes timeout)
-            if session.is_expired(Duration::from_secs(1800)) {
+            if session.is_expired(Duration::from_secs(30 * 60)) {
                 sessions.remove(session_id);
                 None
             } else {
@@ -647,7 +672,7 @@ impl VaultManager {
     }
 
     /// Create a new note in the vault
-    pub fn create_note(&self, session_id: &str, title: Option<String>, content: Option<String>, tags: Option<Vec<String>>, folder_path: Option<String>) -> Result<Note, VaultError> {
+    pub fn create_note(&self, session_id: &str, title: Option<String>, content: Option<String>, tags: Option<Vec<String>>, folder_path: Option<String>, note_type: Option<String>) -> Result<Note, VaultError> {
         // Validate title if provided
         let title = if let Some(title) = title {
             let trimmed = title.trim().to_string();
@@ -662,12 +687,18 @@ impl VaultManager {
             "Untitled".to_string()
         };
 
+        // Validate note type
+        let note_type = note_type.unwrap_or_else(|| "text".to_string());
+        if !["text", "whiteboard"].contains(&note_type.as_str()) {
+            return Err(VaultError::InvalidNoteTitle("Invalid note type".to_string()));
+        }
+
         // Get session to ensure vault is unlocked
         let session = Self::get_session(session_id)
             .ok_or_else(|| VaultError::InvalidPassword)?; // Session expired or invalid
 
-        // Create note
-        let mut note = Note::new(title, content);
+        // Create note with type
+        let mut note = Note::new_with_type(title, content, note_type);
         if let Some(tags) = tags {
             note = note.with_tags(tags);
         }
@@ -716,9 +747,9 @@ impl VaultManager {
         }
 
         // Read and decrypt index
-        let index_data: serde_json::Value = serde_json::from_str(
-            &std::fs::read_to_string(&index_file)?
-        )?;
+        let index_content = std::fs::read_to_string(&index_file)?;
+        
+        let index_data: serde_json::Value = serde_json::from_str(&index_content)?;
 
         let nonce_b64 = index_data["nonce"].as_str()
             .ok_or_else(|| VaultError::VaultCorrupted)?;
@@ -737,6 +768,7 @@ impl VaultManager {
         )?;
 
         let index: NotesIndex = serde_json::from_slice(&decrypted_content)?;
+        
         Ok(index)
     }
 
@@ -775,7 +807,7 @@ impl VaultManager {
     pub fn get_notes_list(&self, session_id: &str) -> Result<Vec<NoteMetadata>, VaultError> {
         let session = Self::get_session(session_id)
             .ok_or_else(|| VaultError::InvalidPassword)?;
-
+        
         let index = self.load_notes_index(&session.encryption_key)?;
         Ok(index.notes)
     }
@@ -786,7 +818,8 @@ impl VaultManager {
             .ok_or_else(|| VaultError::InvalidPassword)?;
 
         let index = self.load_notes_index(&session.encryption_key)?;
-        Ok(index.folders.iter().map(|f| f.path.clone()).collect())
+        let folders: Vec<String> = index.folders.iter().map(|f| f.path.clone()).collect();
+        Ok(folders)
     }
 
     /// Load a specific note by ID
@@ -834,9 +867,7 @@ impl VaultManager {
 
         // Update the notes index to add the folder
         self.update_notes_index(&session.encryption_key, |index| {
-            if let Err(e) = index.add_folder(folder_path.clone()) {
-                eprintln!("Failed to add folder {}: {}", folder_path, e);
-            }
+            let _ = index.add_folder(folder_path.clone());
         })?;
 
         Ok(())
@@ -941,9 +972,7 @@ impl VaultManager {
 
         // Update notes index to remove the folder
         self.update_notes_index(&session.encryption_key, |index| {
-            if let Err(e) = index.remove_folder(folder_path) {
-                eprintln!("Failed to remove folder {}: {}", folder_path, e);
-            }
+            let _ = index.remove_folder(folder_path);
         })?;
 
         Ok(())
@@ -956,9 +985,7 @@ impl VaultManager {
 
         // Update notes index to move the note
         self.update_notes_index(&session.encryption_key, |index| {
-            if let Err(e) = index.move_note(note_id, new_folder_path.clone()) {
-                eprintln!("Failed to move note {}: {}", note_id, e);
-            }
+            let _ = index.move_note(note_id, new_folder_path.clone());
         })?;
 
         // Load the note and update its folder path directly
@@ -1004,9 +1031,7 @@ impl VaultManager {
 
         // Update notes index to move the folder
         self.update_notes_index(&session.encryption_key, |index| {
-            if let Err(e) = index.move_folder(old_path, new_path) {
-                eprintln!("Failed to move folder {} to {}: {}", old_path, new_path, e);
-            }
+            let _ = index.move_folder(old_path, new_path);
         })?;
 
         Ok(())

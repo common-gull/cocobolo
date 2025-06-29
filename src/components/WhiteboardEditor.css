@@ -1,0 +1,58 @@
+.whiteboard-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+.editor-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title-input-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.title-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.title-error {
+  color: var(--mantine-color-error);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+  .title-input-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .title-input input:focus {
+    border-bottom-width: 3px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title-input input {
+    transition: none !important;
+  }
+} 

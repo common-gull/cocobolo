@@ -321,12 +321,13 @@ async fn create_note(
     title: Option<String>,
     content: Option<String>,
     tags: Option<Vec<String>>,
-    folder_path: Option<String>
+    folder_path: Option<String>,
+    note_type: Option<String>
 ) -> Result<CreateNoteResult, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
     
-    match vault_manager.create_note(&session_id, title, content, tags, folder_path) {
+    match vault_manager.create_note(&session_id, title, content, tags, folder_path, note_type) {
         Ok(note) => Ok(CreateNoteResult {
             success: true,
             note: Some(note),

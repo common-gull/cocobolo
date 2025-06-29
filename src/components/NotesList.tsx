@@ -223,7 +223,14 @@ export function NotesList({ vaultPath, sessionId, selectedNoteId, onCreateNote, 
               onClick={() => handleNoteClick(note.id)}
             >
               <div className="note-header">
-                <h3 className="note-title">{note.title}</h3>
+                <div className="note-title-row">
+                  {note.note_type === 'whiteboard' ? (
+                    <Icons.whiteboard size="sm" />
+                  ) : (
+                    <Icons.file size="sm" />
+                  )}
+                  <h3 className="note-title">{note.title}</h3>
+                </div>
                 <div className="note-date">{formatDate(note.created_at)}</div>
               </div>
               
@@ -699,7 +706,11 @@ export function TreeNotesList({
                 onContextMenu={(e) => handleContextMenu(e, 'note', note.id)}
                 title={note.title}
               >
-                <Icons.file size="sm" />
+                {note.note_type === 'whiteboard' ? (
+                  <Icons.whiteboard size="sm" />
+                ) : (
+                  <Icons.file size="sm" />
+                )}
                 <span className="tree-note-title">{note.title}</span>
                 {note.tags.length > 0 && (
                   <span className="tree-note-tags">({note.tags.length})</span>
@@ -783,7 +794,11 @@ export function TreeNotesList({
             onContextMenu={(e) => handleContextMenu(e, 'note', note.id)}
             title={note.title}
           >
-            <Icons.file size="sm" />
+            {note.note_type === 'whiteboard' ? (
+              <Icons.whiteboard size="sm" />
+            ) : (
+              <Icons.file size="sm" />
+            )}
             <span className="tree-note-title">{note.title}</span>
             {note.tags.length > 0 && (
               <span className="tree-note-tags">({note.tags.length})</span>

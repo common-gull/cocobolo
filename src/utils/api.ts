@@ -167,7 +167,8 @@ export const api = {
     title?: string,
     content?: string,
     tags?: string[],
-    folderPath?: string
+    folderPath?: string,
+    noteType?: 'text' | 'whiteboard'
   ): Promise<CreateNoteResult> {
     try {
       return await invoke<CreateNoteResult>('create_note', {
@@ -176,7 +177,8 @@ export const api = {
         title,
         content,
         tags,
-        folderPath
+        folderPath,
+        noteType: noteType || 'text'
       });
     } catch (error) {
       throw new ApiError('Failed to create note', error);
