@@ -1,7 +1,8 @@
 import { useAtomValue, useSetAtom } from 'jotai';
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { 
   currentVaultLocationAtom, 
+  vaultConfigLoadingAtom,
   selectedVaultPathAtom, 
   vaultValidationLoadingAtom, 
   vaultValidationResultAtom, 
@@ -15,6 +16,7 @@ import { api } from '../utils/api';
 export function useVaultLocationJotai() {
   // Read atoms
   const currentVaultLocation = useAtomValue(currentVaultLocationAtom);
+  const isConfigLoading = useAtomValue(vaultConfigLoadingAtom);
   const selectedPath = useAtomValue(selectedVaultPathAtom);
   const isValidating = useAtomValue(vaultValidationLoadingAtom);
   const validationResult = useAtomValue(vaultValidationResultAtom);
@@ -25,31 +27,8 @@ export function useVaultLocationJotai() {
   const validatePath = useSetAtom(validateVaultLocationAtom);
   const confirmSelection = useSetAtom(confirmVaultLocationAtom);
 
-  // Load current vault location on mount
-  useEffect(() => {
-    const loadCurrentLocation = async () => {
-      try {
-        const location = await api.getCurrentVaultLocation();
-        // Update the atom directly
-        const { currentVaultLocationAtom, selectedVaultPathAtom } = await import('../stores/notesStore');
-        const { getDefaultStore } = await import('jotai');
-        const store = getDefaultStore();
-        store.set(currentVaultLocationAtom, location);
-        
-        if (location) {
-          store.set(selectedVaultPathAtom, location);
-        }
-      } catch (error) {
-        console.error('Failed to load current vault location:', error);
-        const { vaultLocationErrorAtom } = await import('../stores/notesStore');
-        const { getDefaultStore } = await import('jotai');
-        const store = getDefaultStore();
-        store.set(vaultLocationErrorAtom, error instanceof Error ? error.message : 'Unknown error');
-      }
-    };
-
-    loadCurrentLocation();
-  }, []);
+  // Note: Vault location loading is now handled by initializeVaultSessionAtom
+  // This hook only reads the state and provides selection functionality
 
   const selectDirectory = useCallback(async () => {
     try {
@@ -79,6 +58,7 @@ export function useVaultLocationJotai() {
   return {
     selectedPath,
     currentVaultLocation,
+    isConfigLoading,
     isValidating,
     validationResult,
     error,

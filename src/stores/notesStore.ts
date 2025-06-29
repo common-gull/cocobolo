@@ -25,6 +25,7 @@ export const vaultPathAtom = atom<string | null>(null);
 
 // Vault location atoms (migrating from useVaultLocation hook)
 export const currentVaultLocationAtom = atom<string | null>(null);
+export const vaultConfigLoadingAtom = atom<boolean>(true);
 export const selectedVaultPathAtom = atom<string | null>(null);
 export const vaultValidationLoadingAtom = atom<boolean>(false);
 export const vaultValidationResultAtom = atom<any>(null);
@@ -191,14 +192,28 @@ export const initializeVaultSessionAtom = atom(
           
           set(vaultPathAtom, path);
           set(currentVaultLocationAtom, path);
+          set(vaultConfigLoadingAtom, false); // Mark config as loaded
         } catch (pathError) {
           console.error('Failed to load vault path:', pathError);
           // Don't fail the entire initialization if path loading fails
+          set(vaultConfigLoadingAtom, false); // Mark config as loaded even on error
+        }
+      } else {
+        // No stored session, still need to load current vault location
+        try {
+          const { api } = await import('../utils/api');
+          const path = await api.getCurrentVaultLocation();
+          set(currentVaultLocationAtom, path);
+          set(vaultConfigLoadingAtom, false); // Mark config as loaded
+        } catch (pathError) {
+          console.error('Failed to load vault path:', pathError);
+          set(vaultConfigLoadingAtom, false); // Mark config as loaded even on error
         }
       }
     } catch (error) {
       console.error('Failed to initialize vault session:', error);
       set(appErrorAtom, error instanceof Error ? error.message : 'Failed to initialize session');
+      set(vaultConfigLoadingAtom, false); // Mark config as loaded even on error
     } finally {
       // Always set loading to false, even on error
       set(appLoadingAtom, false);

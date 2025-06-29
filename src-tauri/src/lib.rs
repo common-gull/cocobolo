@@ -6,7 +6,7 @@ mod config;
 mod crypto;
 mod vault;
 
-use config::{AppConfig, ConfigError};
+use config::{AppConfig, ConfigError, KnownVault};
 use crypto::{CryptoError, CryptoManager, PasswordStrength, SecurePassword};
 use vault::{VaultManager, VaultInfo, VaultError, Note, NoteMetadata};
 
@@ -103,6 +103,27 @@ pub struct SaveNoteResult {
     pub error_message: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AddVaultRequest {
+    pub name: String,
+    pub path: String,
+    pub is_encrypted: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AddVaultResult {
+    pub success: bool,
+    pub vault_id: Option<String>,
+    pub error_message: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UpdateVaultMetadataRequest {
+    pub vault_id: String,
+    pub name: Option<String>,
+    pub is_favorite: Option<bool>,
+}
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn get_app_info() -> Result<AppInfo, AppError> {
@@ -177,10 +198,29 @@ async fn validate_vault_location(path: String) -> Result<VaultLocationInfo, AppE
     })
 }
 
+// Legacy vault location commands (for backward compatibility)
 #[tauri::command]
 async fn set_vault_location(path: String) -> Result<(), AppError> {
     let mut config = AppConfig::load()?;
-    config.set_vault_location(&path)?;
+    
+    // Use the new multi-vault system
+    let path_buf = std::path::PathBuf::from(&path);
+    
+    // Check if this vault already exists in known_vaults
+    if let Some(existing_vault) = config.known_vaults.iter().find(|v| v.path == path_buf) {
+        // Set it as current vault
+        config.set_current_vault(Some(existing_vault.id.clone()))?;
+    } else {
+        // Add as new vault and set as current
+        let vault_name = path_buf.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("Vault")
+            .to_string();
+        
+        let vault_id = config.add_known_vault(vault_name, path_buf, false)?;
+        config.set_current_vault(Some(vault_id))?;
+    }
+    
     config.save()?;
     Ok(())
 }
@@ -188,7 +228,97 @@ async fn set_vault_location(path: String) -> Result<(), AppError> {
 #[tauri::command]
 async fn get_current_vault_location() -> Result<Option<String>, AppError> {
     let config = AppConfig::load()?;
+    
+    // First try the new multi-vault approach
+    if let Some(current_vault) = config.get_current_vault() {
+        return Ok(Some(current_vault.path.display().to_string()));
+    }
+    
+    // Fall back to legacy approach for backward compatibility
+    #[allow(deprecated)]
     Ok(config.get_vault_location().map(|p| p.display().to_string()))
+}
+
+// New multi-vault commands
+#[tauri::command]
+async fn add_known_vault(request: AddVaultRequest) -> Result<AddVaultResult, AppError> {
+    let mut config = AppConfig::load()?;
+    
+    match config.add_known_vault(request.name, std::path::PathBuf::from(request.path), request.is_encrypted) {
+        Ok(vault_id) => {
+            config.save()?;
+            Ok(AddVaultResult {
+                success: true,
+                vault_id: Some(vault_id),
+                error_message: None,
+            })
+        }
+        Err(e) => {
+            Ok(AddVaultResult {
+                success: false,
+                vault_id: None,
+                error_message: Some(e.to_string()),
+            })
+        }
+    }
+}
+
+#[tauri::command]
+async fn remove_known_vault(vault_id: String) -> Result<bool, AppError> {
+    let mut config = AppConfig::load()?;
+    config.remove_known_vault(&vault_id)?;
+    config.save()?;
+    Ok(true)
+}
+
+#[tauri::command]
+async fn get_known_vaults() -> Result<Vec<KnownVault>, AppError> {
+    let config = AppConfig::load()?;
+    Ok(config.get_known_vaults().to_vec())
+}
+
+#[tauri::command]
+async fn get_current_vault() -> Result<Option<KnownVault>, AppError> {
+    let config = AppConfig::load()?;
+    Ok(config.get_current_vault().cloned())
+}
+
+#[tauri::command]
+async fn set_current_vault(vault_id: Option<String>) -> Result<(), AppError> {
+    let mut config = AppConfig::load()?;
+    config.set_current_vault(vault_id)?;
+    config.save()?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_recent_vaults() -> Result<Vec<KnownVault>, AppError> {
+    let config = AppConfig::load()?;
+    Ok(config.get_recent_vaults().into_iter().cloned().collect())
+}
+
+#[tauri::command]
+async fn get_favorite_vaults() -> Result<Vec<KnownVault>, AppError> {
+    let config = AppConfig::load()?;
+    Ok(config.get_favorite_vaults().into_iter().cloned().collect())
+}
+
+#[tauri::command]
+async fn update_vault_metadata(request: UpdateVaultMetadataRequest) -> Result<(), AppError> {
+    let mut config = AppConfig::load()?;
+    config.update_vault_metadata(&request.vault_id, request.name, request.is_favorite)?;
+    config.save()?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn cleanup_invalid_vaults() -> Result<Vec<String>, AppError> {
+    let mut config = AppConfig::load()?;
+    let removed_ids = config.cleanup_invalid_vaults();
+    if !removed_ids.is_empty() {
+        config.save()?;
+    }
+    Ok(removed_ids)
 }
 
 #[tauri::command]
@@ -523,7 +653,16 @@ pub fn run() {
             delete_note,
             delete_folder,
             move_note,
-            move_folder
+            move_folder,
+            add_known_vault,
+            remove_known_vault,
+            get_known_vaults,
+            get_current_vault,
+            set_current_vault,
+            get_recent_vaults,
+            get_favorite_vaults,
+            update_vault_metadata,
+            cleanup_invalid_vaults
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

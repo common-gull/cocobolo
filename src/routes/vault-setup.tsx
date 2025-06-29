@@ -1,10 +1,19 @@
 import { useNavigate } from 'react-router';
+import { useEffect } from 'react';
+import { useSetAtom } from 'jotai';
 import { Container } from '@mantine/core';
 import { VaultLocationSelector } from '../components/VaultLocationSelector';
+import { initializeVaultSessionAtom } from '../stores/notesStore';
 import { api } from '../utils/api';
 
 export default function VaultSetup() {
   const navigate = useNavigate();
+  const initializeSession = useSetAtom(initializeVaultSessionAtom);
+
+  // Initialize vault configuration on mount
+  useEffect(() => {
+    initializeSession();
+  }, [initializeSession]);
 
   const handleVaultLocationSet = async (path: string) => {
     try {

@@ -32,6 +32,7 @@ export function VaultLocationSelector({ onLocationSet }: VaultLocationSelectorPr
   const {
     selectedPath,
     currentVaultLocation,
+    isConfigLoading,
     isValidating,
     validationResult,
     error,
@@ -50,7 +51,7 @@ export function VaultLocationSelector({ onLocationSet }: VaultLocationSelectorPr
   };
 
   // Show loading state while initializing
-  if (currentVaultLocation === null && !error) {
+  if (isConfigLoading) {
     return (
       <Container size="md" py="xl">
         <Paper p="xl" radius="lg" shadow="md">
