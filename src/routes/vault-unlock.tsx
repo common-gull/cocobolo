@@ -19,7 +19,7 @@ export default function VaultUnlockRoute() {
         // Get current vault location
         const location = await api.getCurrentVaultLocation();
         if (!location) {
-          navigate('/vault-setup');
+          navigate('/');
           return;
         }
 
@@ -29,8 +29,8 @@ export default function VaultUnlockRoute() {
         const setupInfo: VaultSetupInfo = await api.checkVaultSetupStatus(location);
         
         if (!setupInfo.vault_info) {
-          // No vault info available, redirect to setup
-          navigate('/vault-setup');
+          // No vault info available, redirect to vault selector
+          navigate('/');
           return;
         }
 
@@ -61,8 +61,8 @@ export default function VaultUnlockRoute() {
   };
 
   const handleCancel = () => {
-    // Go back to vault setup
-    navigate('/vault-setup');
+    // Go back to vault selector
+    navigate('/');
   };
 
   if (loading) {

@@ -12,7 +12,11 @@ import type {
   Note,
   NoteMetadata,
   CreateNoteResult,
-  SaveNoteResult
+  SaveNoteResult,
+  KnownVault,
+  AddVaultRequest,
+  AddVaultResult,
+  UpdateVaultMetadataRequest
 } from '../types';
 
 export class ApiError extends Error {
@@ -334,6 +338,79 @@ export const api = {
       });
     } catch (error) {
       throw new ApiError('Failed to move folder', error);
+    }
+  },
+
+  // Multi-vault management
+  async addKnownVault(request: AddVaultRequest): Promise<AddVaultResult> {
+    try {
+      return await invoke<AddVaultResult>('add_known_vault', { request });
+    } catch (error) {
+      throw new ApiError('Failed to add known vault', error);
+    }
+  },
+
+  async removeKnownVault(vaultId: string): Promise<boolean> {
+    try {
+      return await invoke<boolean>('remove_known_vault', { vaultId });
+    } catch (error) {
+      throw new ApiError('Failed to remove known vault', error);
+    }
+  },
+
+  async getKnownVaults(): Promise<KnownVault[]> {
+    try {
+      return await invoke<KnownVault[]>('get_known_vaults');
+    } catch (error) {
+      throw new ApiError('Failed to get known vaults', error);
+    }
+  },
+
+  async getCurrentVault(): Promise<KnownVault | null> {
+    try {
+      return await invoke<KnownVault | null>('get_current_vault');
+    } catch (error) {
+      throw new ApiError('Failed to get current vault', error);
+    }
+  },
+
+  async setCurrentVault(vaultId: string | null): Promise<void> {
+    try {
+      await invoke<void>('set_current_vault', { vaultId });
+    } catch (error) {
+      throw new ApiError('Failed to set current vault', error);
+    }
+  },
+
+  async getRecentVaults(): Promise<KnownVault[]> {
+    try {
+      return await invoke<KnownVault[]>('get_recent_vaults');
+    } catch (error) {
+      throw new ApiError('Failed to get recent vaults', error);
+    }
+  },
+
+  async getFavoriteVaults(): Promise<KnownVault[]> {
+    try {
+      return await invoke<KnownVault[]>('get_favorite_vaults');
+    } catch (error) {
+      throw new ApiError('Failed to get favorite vaults', error);
+    }
+  },
+
+  async updateVaultMetadata(request: UpdateVaultMetadataRequest): Promise<void> {
+    try {
+      await invoke<void>('update_vault_metadata', { request });
+    } catch (error) {
+      throw new ApiError('Failed to update vault metadata', error);
+    }
+  },
+
+  async cleanupInvalidVaults(): Promise<string[]> {
+    try {
+      return await invoke<string[]>('cleanup_invalid_vaults');
+    } catch (error) {
+      throw new ApiError('Failed to cleanup invalid vaults', error);
     }
   },
 }; 

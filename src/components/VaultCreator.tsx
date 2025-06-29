@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router';
 import { 
   Container, 
   Paper, 
@@ -13,24 +14,33 @@ import {
   Progress,
   List,
   Box,
-  Divider
+  Divider,
+  Code,
+  Loader,
+  Badge
 } from '@mantine/core';
 import { 
   IconLock, 
   IconAlertTriangle, 
   IconCheck, 
-  IconShield
+  IconShield,
+  IconFolder,
+  IconArrowLeft,
+  IconX,
+  IconInfoCircle
 } from '@tabler/icons-react';
 import { api } from '../utils/api';
-import type { VaultPasswordSetupState, VaultInfo } from '../types';
+import type { VaultPasswordSetupState, VaultInfo, VaultLocationInfo } from '../types';
 
-interface VaultPasswordSetupProps {
-  vaultPath: string;
+interface VaultCreatorProps {
   onVaultCreated?: (sessionId: string | null, vaultInfo: VaultInfo | null) => void;
   onCancel?: () => void;
 }
 
-export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: VaultPasswordSetupProps) {
+export function VaultCreator({ onVaultCreated, onCancel }: VaultCreatorProps) {
+  const navigate = useNavigate();
+  
+  // Vault creation state
   const [state, setState] = useState<VaultPasswordSetupState>({
     vaultName: '',
     password: '',
@@ -41,6 +51,12 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
     passwordStrength: null,
   });
 
+  // Location selection state
+  const [selectedPath, setSelectedPath] = useState<string>('');
+  const [isValidatingPath, setIsValidatingPath] = useState(false);
+  const [pathValidation, setPathValidation] = useState<VaultLocationInfo | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
   const handleVaultNameChange = useCallback((vaultName: string) => {
     setState(prev => ({ ...prev, vaultName }));
   }, []);
@@ -50,6 +66,10 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
       state.vaultName.trim().length > 0 &&
       state.password.length > 0 &&
       state.password === state.confirmPassword &&
+      selectedPath.trim().length > 0 &&
+      pathValidation?.is_valid &&
+      pathValidation?.is_writable &&
+      !pathValidation?.has_existing_vault &&
       !state.isCreating &&
       (!state.passwordStrength || state.passwordStrength.score >= 2)
     );
@@ -75,21 +95,56 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
     setState(prev => ({ ...prev, confirmPassword, error: null }));
   }, []);
 
+  const handleSelectDirectory = async () => {
+    try {
+      setLocationError(null);
+      const path = await api.selectVaultDirectory();
+      if (path) {
+        setSelectedPath(path);
+        
+        // Auto-validate the path
+        setIsValidatingPath(true);
+        try {
+          const validation = await api.validateVaultLocation(path);
+          setPathValidation(validation);
+        } catch (err) {
+          setLocationError(err instanceof Error ? err.message : 'Failed to validate path');
+        } finally {
+          setIsValidatingPath(false);
+        }
+      }
+    } catch (err) {
+      setLocationError(err instanceof Error ? err.message : 'Failed to select directory');
+    }
+  };
+
   const handleCreateVault = async () => {
     if (!canCreateVault()) return;
 
     try {
       setState(prev => ({ ...prev, isCreating: true, error: null }));
       
+      // Create the encrypted vault
       await api.createEncryptedVault(
-        vaultPath,
+        selectedPath,
         state.vaultName.trim(),
         state.password
       );
 
+      // Add to known vaults
+      const result = await api.addKnownVault({
+        name: state.vaultName.trim(),
+        path: selectedPath,
+      });
+
+      if (result.success && result.vault_id) {
+        // Set as current vault
+        await api.setCurrentVault(result.vault_id);
+      }
+
       // Auto-unlock the vault after creation
       try {
-        const unlockResult = await api.unlockVault(vaultPath, state.password);
+        const unlockResult = await api.unlockVault(selectedPath, state.password);
         
         if (unlockResult.success && unlockResult.session_id && unlockResult.vault_info) {
           // Store session information
@@ -161,6 +216,16 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
 
   return (
     <Container size="sm" py="xl">
+      <Group mb="md">
+        <Button
+          variant="subtle"
+          leftSection={<IconArrowLeft size={16} />}
+          onClick={() => navigate('/')}
+        >
+          Back to Vault Selector
+        </Button>
+      </Group>
+
       <Paper p="xl" radius="lg" shadow="md">
         <Stack gap="xl">
           {/* Header */}
@@ -169,15 +234,116 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
             <Box ta="center">
               <Title order={2} mb="xs">Create New Vault</Title>
               <Text c="dimmed">
-                Set up your encrypted vault with a secure password
+                Set up your encrypted vault with a secure location and password
               </Text>
             </Box>
           </Stack>
 
           <Divider />
 
-          {/* Setup Form */}
+          {/* Vault Location Section */}
+          <Stack gap="md">
+            <Title order={3}>
+              <Group gap="sm">
+                <IconFolder size={20} />
+                Vault Location
+              </Group>
+            </Title>
+            
+            <Group>
+              <Button
+                leftSection={<IconFolder size={16} />}
+                onClick={handleSelectDirectory}
+                loading={isValidatingPath}
+                size="md"
+              >
+                {isValidatingPath ? 'Validating...' : 'Select Directory'}
+              </Button>
+            </Group>
+
+            {/* Selected Path Display */}
+            {selectedPath && (
+              <Box>
+                <Text fw={500} mb="xs">Selected Path:</Text>
+                <Code block p="sm" bg="blue.0">
+                  {selectedPath}
+                </Code>
+              </Box>
+            )}
+
+            {/* Path Validation */}
+            {isValidatingPath && (
+              <Alert icon={<Loader size={16} />} color="blue">
+                Validating vault location...
+              </Alert>
+            )}
+
+            {pathValidation && !isValidatingPath && (
+              <Stack gap="xs">
+                <Alert
+                  icon={pathValidation.is_valid ? <IconCheck size={16} /> : <IconX size={16} />}
+                  title={pathValidation.is_valid ? "Directory is accessible" : "Directory is not accessible"}
+                  color={pathValidation.is_valid ? "green" : "red"}
+                  variant="light"
+                />
+                
+                {pathValidation.is_valid && (
+                  <Alert
+                    icon={pathValidation.is_writable ? <IconCheck size={16} /> : <IconX size={16} />}
+                    title={pathValidation.is_writable ? "Directory is writable" : "Directory is not writable"}
+                    color={pathValidation.is_writable ? "green" : "red"}
+                    variant="light"
+                  />
+                )}
+
+                {pathValidation.has_existing_vault && (
+                  <Alert
+                    icon={<IconInfoCircle size={16} />}
+                    title="Existing vault found"
+                    color="orange"
+                    variant="light"
+                  >
+                    <Text size="sm">
+                      This directory already contains a vault. Please choose a different location for your new vault.
+                    </Text>
+                    {pathValidation.vault_info && (
+                      <Group gap="xs" mt="xs">
+                        <Badge leftSection={<IconLock size={12} />} variant="light">
+                          {pathValidation.vault_info.name}
+                        </Badge>
+                        <Text size="sm" c="dimmed">
+                          Created {new Date(pathValidation.vault_info.created_at).toLocaleDateString()}
+                        </Text>
+                      </Group>
+                    )}
+                  </Alert>
+                )}
+              </Stack>
+            )}
+
+            {locationError && (
+              <Alert
+                icon={<IconAlertTriangle size={16} />}
+                title="Location Error"
+                color="red"
+                variant="light"
+              >
+                {locationError}
+              </Alert>
+            )}
+          </Stack>
+
+          <Divider />
+
+          {/* Vault Setup Section */}
           <Stack gap="lg">
+            <Title order={3}>
+              <Group gap="sm">
+                <IconShield size={20} />
+                Vault Details
+              </Group>
+            </Title>
+
             <TextInput
               label="Vault Name"
               placeholder="My Secure Notes"
@@ -278,8 +444,9 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
                 onClick={handleCreateVault}
                 disabled={!canCreateVault()}
                 loading={state.isCreating}
-                leftSection={<IconCheck size={16} />}
-                ml="auto"
+                size="md"
+                leftSection={<IconLock size={16} />}
+                style={{ marginLeft: 'auto' }}
               >
                 {state.isCreating ? 'Creating Vault...' : 'Create Vault'}
               </Button>

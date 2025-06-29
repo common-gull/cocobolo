@@ -35,11 +35,47 @@ export interface VaultLocationInfo {
   vault_info?: VaultInfo;
 }
 
+// Multi-vault support types
+export interface KnownVault {
+  id: string;
+  name: string;
+  path: string;
+  created_at: string;
+  last_accessed?: string;
+  is_favorite: boolean;
+}
+
+export interface AddVaultRequest {
+  name: string;
+  path: string;
+}
+
+export interface AddVaultResult {
+  success: boolean;
+  vault_id?: string;
+  error_message?: string;
+}
+
+export interface UpdateVaultMetadataRequest {
+  vault_id: string;
+  name?: string;
+  is_favorite?: boolean;
+}
+
 export interface AppConfig {
+  // Legacy field for backward compatibility
   vault_location?: string;
+  // New multi-vault fields
+  current_vault_id?: string;
+  known_vaults: KnownVault[];
   theme: 'light' | 'dark' | 'system';
   auto_save_interval: number;
   show_markdown_preview: boolean;
+  window_maximized: boolean;
+  window_width?: number;
+  window_height?: number;
+  recent_vault_ids: string[];
+  max_recent_vaults: number;
 }
 
 export interface VaultSelectionState {
@@ -54,10 +90,6 @@ export interface PasswordStrength {
   score: number; // 0-4 strength score
   issues: string[];
   suggestions: string[];
-  feedback: {
-    suggestions: string[];
-    warning: string;
-  };
 }
 
 export interface VaultSetupInfo {
@@ -108,7 +140,7 @@ export interface VaultUnlockState {
   rateLimitInfo: RateLimitInfo | null;
 }
 
-export type AppView = 'home' | 'vault-setup' | 'password-setup' | 'vault-unlock' | 'main-app' | 'create-note' | 'notes-list' | 'edit-note' | 'create-whiteboard' | 'edit-whiteboard';
+export type AppView = 'home' | 'vault-creator' | 'vault-unlock' | 'main-app' | 'create-note' | 'notes-list' | 'edit-note' | 'create-whiteboard' | 'edit-whiteboard';
 
 // Note types
 export type NoteType = 'text' | 'whiteboard';
