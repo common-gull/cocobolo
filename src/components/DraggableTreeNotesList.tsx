@@ -36,8 +36,8 @@ import './NotesList.css';
 interface DraggableTreeNotesListProps {
   vaultPath: string;
   sessionId: string;
-  selectedNoteId?: string;
-  onSelectNote?: (noteId: string) => void;
+  selectedNoteId?: string | undefined;
+  onSelectNote?: ((noteId: string) => void) | undefined;
   onCreateNote?: () => void;
   onCreateWhiteboard?: () => void;
 }
@@ -220,14 +220,23 @@ function DraggableNote({
 
   const paddingLeft = (level + 1) * 16;
 
+  const handleClick = () => {
+    console.log('Note clicked:', note.title, 'isDragging:', isDragging, 'note.id:', note.id);
+    // Prevent click during drag
+    if (!isDragging) {
+      console.log('Calling onSelectNote with:', note.id);
+      onSelectNote?.(note.id);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       className={`tree-note-item ${selectedNoteId === note.id ? 'selected' : ''}`}
       style={{ paddingLeft: `${paddingLeft}px`, ...style }}
-      onClick={() => onSelectNote?.(note.id)}
       onContextMenu={(e) => onContextMenu(e, 'note', note.id)}
       title={note.title}
+      onClick={handleClick}
       {...attributes}
       {...listeners}
     >
@@ -236,7 +245,9 @@ function DraggableNote({
       ) : (
         <Icons.file size="sm" />
       )}
-      <span className="tree-note-title">{note.title}</span>
+      <span className="tree-note-title">
+        {note.title}
+      </span>
       {note.tags.length > 0 && (
         <span className="tree-note-tags">({note.tags.length})</span>
       )}
@@ -308,7 +319,7 @@ export function DraggableTreeNotesList({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 3,
       },
     })
   );

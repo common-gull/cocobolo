@@ -30,7 +30,7 @@ interface MainLayoutProps {
   };
   sessionId?: string;
   vaultPath?: string;
-  selectedNoteId?: string;
+  selectedNoteId?: string | undefined;
   onLogout?: () => void;
   onSelectNote?: (noteId: string) => void;
   onCreateNote?: () => void;
@@ -176,8 +176,8 @@ export function MainLayout({
                   <DraggableTreeNotesList
                     vaultPath={vaultPath}
                     sessionId={sessionId}
-                    {...(selectedNoteId && { selectedNoteId })}
-                    {...(onSelectNote && { onSelectNote })}
+                    selectedNoteId={selectedNoteId}
+                    onSelectNote={onSelectNote}
                     onCreateNote={handleCreateNote}
                     onCreateWhiteboard={onCreateWhiteboard || (() => {})}
                   />

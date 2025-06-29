@@ -168,7 +168,7 @@ export function WhiteboardEditor({
   // State for UI
   const [title, setTitle] = useState(noteId ? '' : 'New Whiteboard');
   const [titleError, setTitleError] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // Start with false, set to true only when actually loading
+  const [isLoading, setIsLoading] = useState(!!noteId); // Start with true if we have a noteId to load
   const [loadError, setLoadError] = useState<string | null>(null);
   
   // Refs for auto-save operations - no UI state for content changes
@@ -244,7 +244,7 @@ export function WhiteboardEditor({
       // Try to load immediately if Excalidraw is ready
       if (excalidrawRef.current) {
         // Small delay to ensure Excalidraw is fully initialized
-        setTimeout(loadDataIntoExcalidraw, 100);
+        setTimeout(loadDataIntoExcalidraw, 10);
       } else {
         // Store the function to call when Excalidraw becomes ready
         pendingLoadFunctionRef.current = loadDataIntoExcalidraw;
@@ -569,13 +569,13 @@ export function WhiteboardEditor({
 
       <div style={{ flex: 1, minHeight: 0 }}>
         <Excalidraw
-          key={noteId || 'new-whiteboard'} // Force new instance for each note
+          key={`whiteboard-${noteId || 'new'}`}
           excalidrawAPI={(api) => {
             excalidrawRef.current = api;
             
             // If there's a pending load function, execute it
             if (pendingLoadFunctionRef.current) {
-              setTimeout(pendingLoadFunctionRef.current, 100);
+              setTimeout(pendingLoadFunctionRef.current, 10);
               pendingLoadFunctionRef.current = null;
             }
           }}
@@ -589,6 +589,13 @@ export function WhiteboardEditor({
             }
           }}
           theme={effectiveTheme === 'dark' ? 'dark' : 'light'}
+          initialData={{
+            elements: [],
+            appState: {
+              theme: effectiveTheme === 'dark' ? 'dark' : 'light',
+              viewBackgroundColor: effectiveTheme === 'dark' ? '#1a1a1a' : '#ffffff'
+            }
+          }}
         />
       </div>
     </div>
