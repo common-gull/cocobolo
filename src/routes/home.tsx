@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { 
   Container, 
@@ -31,7 +30,6 @@ import {
 import type { AppInfo, VaultSetupInfo } from '../types';
 
 export default function Home() {
-  const navigate = useNavigate();
   
   // Use Jotai atoms for common state
   const appLoading = useAtomValue(appLoadingAtom);
@@ -68,20 +66,6 @@ export default function Home() {
           // Check vault setup status
           const setupInfo = await api.checkVaultSetupStatus(location);
           setVaultSetupInfo(setupInfo);
-          
-          if (setupInfo.needs_password && !setupInfo.vault_info) {
-            // New vault needs password setup - pass the path as search param
-            navigate(`/password-setup?vaultPath=${encodeURIComponent(location)}`);
-          } else if (setupInfo.needs_password && setupInfo.vault_info) {
-            // Existing encrypted vault needs unlock
-            navigate('/vault-unlock');
-          } else {
-            // Vault is ready, go to main app
-            navigate('/app');
-          }
-        } else {
-          // No vault location set
-          navigate('/vault-setup');
         }
       } catch (err) {
         setAppError(err instanceof Error ? err.message : 'Failed to load app data');
@@ -91,7 +75,7 @@ export default function Home() {
     };
 
     loadInitialData();
-  }, [navigate, setAppLoading, setAppError, setVaultLocation]);
+  }, [setAppLoading, setAppError, setVaultLocation]);
 
   const handleGreet = async () => {
     if (!greetInput.trim()) return;
