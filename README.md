@@ -40,3 +40,7 @@ Cocobolo prioritizes security and privacy:
 - All data stays local on your device
 - Zero-knowledge architecture
 
+## Documentation
+
+For more detailed information, check out the documentation in the [docs](./docs) folder:
+- [macOS Installation Guide](./docs/macos-installation.md) - Instructions for running Cocobolo on macOS without a developer certificate
