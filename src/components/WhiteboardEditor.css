@@ -1,17 +1,19 @@
 .whiteboard-editor {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh - 62px); /* TODO: Rework layout to avoid calculations*/
   background: var(--bg-primary);
   color: var(--text-primary);
   overflow: hidden;
+  margin: -15px;
 }
 
-.editor-header {
+.whiteboard-editor .editor-header {
   display: flex;
   flex-direction: column;
   gap: 12px;
   flex-shrink: 0;
+  padding: 0 5px;
 }
 
 .title-section {

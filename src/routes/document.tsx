@@ -2,9 +2,9 @@ import { useEffect, useState, lazy, Suspense, useCallback } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router';
 import { 
   Container, 
-  Loader, 
-  Center, 
-  Alert, 
+  Loader,
+  Center,
+  Alert,
   Stack,
   Text
 } from '@mantine/core';
@@ -12,15 +12,14 @@ import { IconAlertTriangle } from '@tabler/icons-react';
 import { api } from '../utils/api';
 import { useTheme } from '../hooks/useTheme';
 import type { Note } from '../types';
+import { WhiteboardEditor } from '../components/WhiteboardEditor';
 
 // Lazy load the editor components for better performance
 const MarkdownEditor = lazy(() => import('../components/MarkdownEditor').then(module => ({ default: module.MarkdownEditor })));
-const WhiteboardEditor = lazy(() => import('../components/WhiteboardEditor').then(module => ({ default: module.WhiteboardEditor })));
 
 // Preload the components to reduce loading time
 const preloadComponents = () => {
   import('../components/MarkdownEditor');
-  import('../components/WhiteboardEditor');
 };
 
 // Start preloading when this module loads
@@ -41,7 +40,6 @@ export default function Document() {
   const { sessionId, vaultPath, handleNoteUpdated, handleNoteDeleted } = useOutletContext<AppContext>();
   
   const [note, setNote] = useState<Note | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,20 +47,16 @@ export default function Document() {
 
     // Only load the note if it's different from the currently loaded one
     if (note && note.id === noteId) {
-      setLoading(false);
       return;
     }
 
     const loadNote = async () => {
       try {
-        setLoading(true);
         setError(null);
         const loadedNote = await api.loadNote(vaultPath, sessionId, noteId);
         setNote(loadedNote);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load note');
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -86,17 +80,6 @@ export default function Document() {
       }
     }
   }, [vaultPath, sessionId, handleNoteDeleted, navigate]);
-
-  if (loading) {
-    return (
-      <Center h="100%">
-        <Stack align="center" gap="md">
-          <Loader size="lg" />
-          <Text>Loading note...</Text>
-        </Stack>
-      </Center>
-    );
-  }
 
   if (error) {
     return (
@@ -131,17 +114,7 @@ export default function Document() {
         <WhiteboardEditor
           vaultPath={vaultPath}
           sessionId={sessionId}
-          noteId={note.id}
-          onSaved={async (noteId: string) => {
-            // Reload the note after save
-            try {
-              const updatedNote = await api.loadNote(vaultPath, sessionId, noteId);
-              setNote(updatedNote);
-              handleNoteUpdated(updatedNote);
-            } catch (err) {
-              console.error('Failed to reload note after save:', err);
-            }
-          }}
+          note={note}
           onCancel={handleCloseEditor}
           onError={handleEditorError}
           onNoteUpdated={handleNoteUpdated}

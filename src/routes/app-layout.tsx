@@ -93,9 +93,6 @@ export default function AppLayout() {
     navigate('/');
   };
 
-  const handleSelectNote = (noteId: string) => {
-    navigate(`/documents/${noteId}`);
-  };
 
   const handleCreateNote = async () => {
     if (!vaultPath || !sessionId) return;
@@ -187,7 +184,6 @@ export default function AppLayout() {
       vaultPath={vaultPath!}
       selectedNoteId={selectedNoteId}
       onLogout={handleLogout}
-      onSelectNote={handleSelectNote}
       onCreateNote={handleCreateNote}
       onCreateWhiteboard={handleCreateWhiteboard}
       showSidebar={true}

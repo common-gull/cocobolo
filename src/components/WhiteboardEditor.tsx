@@ -8,7 +8,6 @@ import {
   Group, 
   Stack, 
   Alert, 
-  Loader,
   Menu,
   ActionIcon,
   Modal
@@ -29,7 +28,7 @@ import './WhiteboardEditor.css';
 interface WhiteboardEditorProps {
   vaultPath: string;
   sessionId: string;
-  noteId?: string; // For editing existing whiteboard
+  note?: Note; // For editing existing whiteboard
   onSaved?: (noteId: string) => void;
   onCancel?: () => void;
   onError?: (error: string) => void;
@@ -78,15 +77,14 @@ const WhiteboardControls: React.FC<WhiteboardControlsProps> = ({
               value={title}
               onChange={handleTitleChange}
               placeholder="Enter whiteboard title"
-              size="lg"
+              size="sm"
               variant="unstyled"
               className="title-input"
               maxLength={200}
               styles={{
                 input: {
-                  fontSize: '1.5rem',
+                  fontSize: '12px',
                   fontWeight: 600,
-                  padding: '8px 0',
                   border: 'none',
                   borderBottom: '2px solid transparent',
                   borderRadius: 0,
@@ -155,7 +153,7 @@ const WhiteboardControls: React.FC<WhiteboardControlsProps> = ({
 export function WhiteboardEditor({ 
   vaultPath, 
   sessionId, 
-  noteId, 
+  note,
   onSaved, 
   onCancel,
   onError,
@@ -164,47 +162,33 @@ export function WhiteboardEditor({
 }: WhiteboardEditorProps) {
   const { effectiveTheme } = useTheme();
   const excalidrawRef = useRef<any>(null);
-  
-  // State for UI
-  const [title, setTitle] = useState(noteId ? '' : 'New Whiteboard');
+
+  // Simple state management
+  const [title, setTitle] = useState(note?.title || 'New Whiteboard');
   const [titleError, setTitleError] = useState('');
-  const [isLoading, setIsLoading] = useState(!!noteId); // Start with true if we have a noteId to load
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
   
-  // Refs for auto-save operations - no UI state for content changes
-  const originalNoteRef = useRef<Note | null>(null);
-  const titleRef = useRef(noteId ? '' : 'New Whiteboard');
+  // Refs for auto-save
   const savingRef = useRef(false);
-  const hasInitialContentRef = useRef(false);
-  const isDataLoadedRef = useRef(false); // Track if we've loaded the initial data
-  const pendingLoadFunctionRef = useRef<(() => void) | null>(null); // Store pending load function
-  
-  // Add ref to track the current noteId to prevent race conditions
-  const currentNoteIdRef = useRef(noteId);
-  
-  // Add ref to store the debounced auto-save function so we can cancel it
+  const hasContentRef = useRef(false);
   const debouncedAutoSaveRef = useRef<ReturnType<typeof debounce> | null>(null);
 
-  // Initial loading effect for existing notes - will be called after loadWhiteboard is defined
+  // Initialize whiteboard data when note changes
+  useEffect(() => {
+    if (!note) {
+      // New whiteboard
+      setTitle('New Whiteboard');
+      setIsLoaded(true);
+      hasContentRef.current = false;
+      return;
+    }
 
-  const loadWhiteboard = useCallback(async () => {
-    if (!noteId) return;
-
-    // Store the noteId we're loading to check for race conditions
-    const loadingNoteId = noteId;
-
+    // Existing whiteboard - load data
     try {
-      setIsLoading(true);
       setLoadError(null);
+      setTitle(note.title);
       
-      const note = await api.loadNote(vaultPath, sessionId, noteId);
-      
-      // Check if noteId changed during loading to prevent race conditions
-      if (currentNoteIdRef.current !== loadingNoteId) {
-        return;
-      }
-      
-      // Parse whiteboard data from content
       let whiteboardData;
       try {
         whiteboardData = JSON.parse(note.content || '{"elements": [], "appState": {}}');
@@ -212,151 +196,70 @@ export function WhiteboardEditor({
         console.warn('Failed to parse whiteboard content, using defaults:', err);
         whiteboardData = { elements: [], appState: {} };
       }
-      
-      // Update refs and state
-      originalNoteRef.current = note;
-      setTitle(note.title);
-      titleRef.current = note.title;
-      
-      setIsLoading(false);
 
-      // Store the data to be loaded when Excalidraw is ready
-      const loadDataIntoExcalidraw = () => {
-        // Double-check we're still loading the same note
-        if (excalidrawRef.current && !isDataLoadedRef.current && currentNoteIdRef.current === loadingNoteId) {
-          try {
-            excalidrawRef.current.updateScene({
-              elements: whiteboardData.elements || [],
-              appState: {
-                ...whiteboardData.appState,
-                theme: effectiveTheme === 'dark' ? 'dark' : 'light'
-              }
-            });
-            hasInitialContentRef.current = whiteboardData.elements && whiteboardData.elements.length > 0;
-            isDataLoadedRef.current = true; // Mark as loaded
-          } catch (err) {
-            console.error('Failed to load whiteboard data into Excalidraw:', err);
-          }
+      // Load data into Excalidraw when it's ready
+      const loadData = () => {
+        if (excalidrawRef.current) {
+          excalidrawRef.current.updateScene({
+            elements: whiteboardData.elements || [],
+            appState: {
+              ...whiteboardData.appState,
+              theme: effectiveTheme === 'dark' ? 'dark' : 'light'
+            }
+          });
+          hasContentRef.current = whiteboardData.elements && whiteboardData.elements.length > 0;
+          setIsLoaded(true);
         }
       };
 
-      // Try to load immediately if Excalidraw is ready
       if (excalidrawRef.current) {
-        // Small delay to ensure Excalidraw is fully initialized
-        setTimeout(loadDataIntoExcalidraw, 10);
+        setTimeout(loadData, 10);
       } else {
-        // Store the function to call when Excalidraw becomes ready
-        pendingLoadFunctionRef.current = loadDataIntoExcalidraw;
+        // Wait for Excalidraw to be ready
+        const checkReady = () => {
+          if (excalidrawRef.current) {
+            loadData();
+          } else {
+            setTimeout(checkReady, 100);
+          }
+        };
+        checkReady();
       }
-      
     } catch (error) {
-      // Only set error if we're still loading the same note
-      if (currentNoteIdRef.current === loadingNoteId) {
-        setIsLoading(false);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to load whiteboard';
-        console.error('Failed to load whiteboard:', error);
-        setLoadError(errorMessage);
-        if (onError) {
-          onError(errorMessage);
-        }
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load whiteboard';
+      console.error('Failed to load whiteboard:', error);
+      setLoadError(errorMessage);
+      if (onError) {
+        onError(errorMessage);
       }
     }
-  }, [noteId, vaultPath, sessionId, effectiveTheme, onError]);
+  }, [note, effectiveTheme, onError]);
 
-  // Reset state when noteId changes
-  useEffect(() => {
-    // Update the current noteId ref
-    currentNoteIdRef.current = noteId;
-    
-    // Cancel any pending debounced auto-save operations from the previous note
-    if (debouncedAutoSaveRef.current) {
-      debouncedAutoSaveRef.current.cancel();
-    }
-    
-    // Reset all refs when switching to a different note
-    originalNoteRef.current = null;
-    isDataLoadedRef.current = false;
-    hasInitialContentRef.current = false;
-    pendingLoadFunctionRef.current = null;
-    
-    if (noteId) {
-      loadWhiteboard();
-    } else {
-      // For new whiteboards, reset to default title and mark as loaded
-      setTitle('New Whiteboard');
-      titleRef.current = 'New Whiteboard';
-      isDataLoadedRef.current = true;
-    }
-  }, [noteId, loadWhiteboard]);
-
-  // Backup loading mechanism - if noteId exists and we haven't loaded yet after 1 second
-  useEffect(() => {
-    if (noteId && !originalNoteRef.current) {
-      const timer = setTimeout(() => {
-        // Only load if we're still on the same note
-        if (!originalNoteRef.current && currentNoteIdRef.current === noteId) {
-          loadWhiteboard();
-        }
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    }
-    // Return empty cleanup function when condition is false
-    return () => {};
-  }, [noteId, loadWhiteboard]);
-
-  // Silent auto-save function - no UI updates, no notifications
+  // Auto-save function
   const autoSave = useCallback(async () => {
-    if (savingRef.current || !excalidrawRef.current) return;
+    if (savingRef.current || !excalidrawRef.current || !isLoaded) return;
     
-    // Check if we're still on the same note (prevent race condition)
-    const currentNoteIdForSave = currentNoteIdRef.current;
-    if (noteId !== currentNoteIdForSave) {
-      
-      return;
-    }
-    
-    // For new notes, check if we have meaningful content
-    const currentTitle = titleRef.current.trim();
+    const currentTitle = title.trim();
     const sceneElements = excalidrawRef.current.getSceneElements();
     const hasDrawingContent = sceneElements && sceneElements.length > 0;
-    const hasContent = hasInitialContentRef.current || hasDrawingContent;
+    const hasContent = hasContentRef.current || hasDrawingContent;
     
     // Don't save empty new whiteboards
-    if (!noteId && (!currentTitle || currentTitle === 'New Whiteboard') && !hasContent) {
+    if (!note && (!currentTitle || currentTitle === 'New Whiteboard') && !hasContent) {
       return;
     }
     
-    // Check if we have actual changes for existing notes
-    if (noteId && originalNoteRef.current) {
-      const original = originalNoteRef.current;
-      if (currentTitle === original.title && !hasContent) {
-        return;
-      }
-    }
-    
-    // Validate title silently
-    if (currentTitle.length > 200) {
-      return;
-    }
-    if (!currentTitle) {
+    // Validate title
+    if (!currentTitle || currentTitle.length > 200) {
       return;
     }
 
     savingRef.current = true;
     
     try {
-      // Double-check we're still on the same note before saving
-      if (currentNoteIdRef.current !== currentNoteIdForSave) {
-        
-        return;
-      }
-      
-      // Get current scene data from Excalidraw
+      // Get current scene data
       const sceneData = excalidrawRef.current.getSceneElements();
       const appState = excalidrawRef.current.getAppState();
-      
-
       
       const whiteboardContent = JSON.stringify({
         elements: sceneData,
@@ -386,22 +289,16 @@ export function WhiteboardEditor({
 
       let result: CreateNoteResult | SaveNoteResult;
 
-      if (noteId && originalNoteRef.current) {
-        // Final check before API call
-        if (currentNoteIdRef.current !== currentNoteIdForSave) {
-
-          return;
-        }
-        
+      if (note) {
         // Update existing note
         result = await api.saveNote(
           vaultPath, 
           sessionId, 
-          noteId,
+          note.id,
           currentTitle,
           whiteboardContent,
-          originalNoteRef.current.tags,
-          originalNoteRef.current.folder_path
+          note.tags,
+          note.folder_path
         );
       } else {
         // Create new note
@@ -416,19 +313,9 @@ export function WhiteboardEditor({
         );
       }
 
-      // Final check after API call - only update state if we're still on the same note
-      if (currentNoteIdRef.current === currentNoteIdForSave && result.success && result.note) {
-        // Update refs with the saved note data
-        originalNoteRef.current = result.note;
-        titleRef.current = result.note.title;
-        
-        // Update UI state if the title changed on the server
-        if (result.note.title !== title) {
-          setTitle(result.note.title);
-        }
-        
+      if (result.success && result.note) {
         // For new notes, notify parent about creation
-        if (!noteId && onSaved) {
+        if (!note && onSaved) {
           onSaved(result.note.id);
         }
         
@@ -436,37 +323,31 @@ export function WhiteboardEditor({
         if (onNoteUpdated) {
           onNoteUpdated(result.note);
         }
-      } else if (currentNoteIdRef.current === currentNoteIdForSave && !result.success) {
-        // Only show errors if we're still on the same note
-        if (onError) {
-          onError(result.error_message || 'Failed to save whiteboard');
-        }
+      } else if (!result.success && onError) {
+        onError(result.error_message || 'Failed to save whiteboard');
       }
     } catch (error) {
-      // Only show errors if we're still on the same note
-      if (currentNoteIdRef.current === currentNoteIdForSave && onError) {
+      if (onError) {
         onError(`Failed to save whiteboard: ${error}`);
       }
     } finally {
       savingRef.current = false;
     }
-  }, [noteId, vaultPath, sessionId, onError, onNoteUpdated, onSaved, title]);
+  }, [note, vaultPath, sessionId, title, isLoaded, onError, onNoteUpdated, onSaved]);
 
-  // Debounced auto-save - completely silent
+  // Debounced auto-save
   const debouncedAutoSave = useMemo(() => {
-    // Cancel the previous debounced function if it exists
     if (debouncedAutoSaveRef.current) {
       debouncedAutoSaveRef.current.cancel();
     }
     
-    // Create new debounced function
     const newDebouncedAutoSave = debounce(autoSave, 300);
     debouncedAutoSaveRef.current = newDebouncedAutoSave;
     
     return newDebouncedAutoSave;
   }, [autoSave]);
 
-  // Cleanup effect to cancel debounced operations when component unmounts
+  // Cleanup effect
   useEffect(() => {
     return () => {
       if (debouncedAutoSaveRef.current) {
@@ -475,10 +356,9 @@ export function WhiteboardEditor({
     };
   }, []);
 
-  // Handle title changes - only update state for title validation
+  // Handle title changes
   const handleTitleChange = useCallback((newTitle: string) => {
     setTitle(newTitle);
-    titleRef.current = newTitle; // Keep ref in sync immediately
     
     if (newTitle.trim().length === 0) {
       setTitleError('Title cannot be empty');
@@ -488,25 +368,25 @@ export function WhiteboardEditor({
       setTitleError('');
     }
     
-    // Trigger auto-save for title changes
     debouncedAutoSave();
   }, [debouncedAutoSave]);
 
   // Handle whiteboard content changes
   const handleWhiteboardChange = useCallback(() => {
-    // Mark that we have content and trigger auto-save
-    hasInitialContentRef.current = true;
+    if (!isLoaded) return; // Ignore changes during initial load
+    
+    hasContentRef.current = true;
     debouncedAutoSave();
-  }, [debouncedAutoSave]);
+  }, [debouncedAutoSave, isLoaded]);
 
   // Handle note deletion
   const handleDeleteNote = useCallback(async () => {
-    if (!noteId) return;
+    if (!note) return;
     
     try {
-      const success = await api.deleteNote(vaultPath, sessionId, noteId);
+      const success = await api.deleteNote(vaultPath, sessionId, note.id);
       if (success && onNoteDeleted) {
-        await onNoteDeleted(noteId);
+        await onNoteDeleted(note.id);
       } else if (!success && onError) {
         onError('Failed to delete whiteboard');
       }
@@ -515,20 +395,7 @@ export function WhiteboardEditor({
         onError(`Failed to delete whiteboard: ${error}`);
       }
     }
-  }, [vaultPath, sessionId, noteId, onNoteDeleted, onError]);
-
-  if (isLoading) {
-    return (
-      <Container size="xl" py="xl">
-        <Paper p="xl" radius="lg" shadow="md">
-          <Stack gap="xl" align="center">
-            <Loader size="lg" />
-            <Text>Loading whiteboard...</Text>
-          </Stack>
-        </Paper>
-      </Container>
-    );
-  }
+  }, [vaultPath, sessionId, note, onNoteDeleted, onError]);
 
   if (loadError) {
     return (
@@ -555,37 +422,27 @@ export function WhiteboardEditor({
   }
 
   return (
-    <div className="whiteboard-editor" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Paper p="md" radius={0} shadow="sm" style={{ borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
-                 <WhiteboardControls
-           title={title}
-           titleError={titleError}
-           onTitleChange={handleTitleChange}
-           {...(noteId && { onDeleteNote: handleDeleteNote })}
-           isNewNote={!noteId}
-         />
-      </Paper>
+    <div className="whiteboard-editor">
+      <div>
+        <WhiteboardControls
+          title={title}
+          titleError={titleError}
+          onTitleChange={handleTitleChange}
+          {...(note && { onDeleteNote: handleDeleteNote })}
+          isNewNote={!note}
+        />
+      </div>
 
       <div style={{ flex: 1, minHeight: 0 }}>
         <Excalidraw
-          key={`whiteboard-${noteId || 'new'}`}
           excalidrawAPI={(api) => {
             excalidrawRef.current = api;
-            
-            // If there's a pending load function, execute it
-            if (pendingLoadFunctionRef.current) {
-              setTimeout(pendingLoadFunctionRef.current, 10);
-              pendingLoadFunctionRef.current = null;
-            }
           }}
           onChange={(elements, _appState, _files) => {
-            // Only process onChange events after initial data is loaded and for the current note
-            if ((!noteId || isDataLoadedRef.current) && currentNoteIdRef.current === noteId) {
-              if (elements && elements.length > 0) {
-                hasInitialContentRef.current = true;
-              }
-              handleWhiteboardChange();
+            if (elements && elements.length > 0) {
+              hasContentRef.current = true;
             }
+            handleWhiteboardChange();
           }}
           theme={effectiveTheme === 'dark' ? 'dark' : 'light'}
           initialData={{
@@ -599,4 +456,4 @@ export function WhiteboardEditor({
       </div>
     </div>
   );
-} 
+}
