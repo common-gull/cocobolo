@@ -77,15 +77,14 @@ const WhiteboardControls: React.FC<WhiteboardControlsProps> = ({
               value={title}
               onChange={handleTitleChange}
               placeholder="Enter whiteboard title"
-              size="lg"
+              size="sm"
               variant="unstyled"
               className="title-input"
               maxLength={200}
               styles={{
                 input: {
-                  fontSize: '1.5rem',
+                  fontSize: '12px',
                   fontWeight: 600,
-                  padding: '8px 0',
                   border: 'none',
                   borderBottom: '2px solid transparent',
                   borderRadius: 0,
@@ -423,8 +422,8 @@ export function WhiteboardEditor({
   }
 
   return (
-    <div className="whiteboard-editor" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Paper p="md" radius={0} shadow="sm" style={{ borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
+    <div className="whiteboard-editor">
+      <div>
         <WhiteboardControls
           title={title}
           titleError={titleError}
@@ -432,7 +431,7 @@ export function WhiteboardEditor({
           {...(note && { onDeleteNote: handleDeleteNote })}
           isNewNote={!note}
         />
-      </Paper>
+      </div>
 
       <div style={{ flex: 1, minHeight: 0 }}>
         <Excalidraw
