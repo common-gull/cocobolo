@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 
 use thiserror::Error;
 
@@ -51,17 +51,6 @@ impl KnownVault {
         self.last_accessed = Some(chrono::Utc::now());
     }
 
-    /// Check if the directory is writable
-    pub fn is_writable(&self) -> bool {
-        let test_file = self.path.join(".cocobolo_write_test");
-        match std::fs::write(&test_file, "test") {
-            Ok(_) => {
-                let _ = std::fs::remove_file(&test_file);
-                true
-            }
-            Err(_) => false,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -405,21 +394,6 @@ impl AppConfig {
         removed_ids
     }
 
-    // Legacy compatibility methods
-    
-    /// Set vault location (for backward compatibility)
-    #[deprecated(note = "Use add_known_vault instead")]
-    pub fn set_vault_location<P: AsRef<Path>>(&mut self, path: P) -> Result<(), ConfigError> {
-        let path = path.as_ref().to_path_buf();
-        let vault_name = path.file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("Default Vault")
-            .to_string();
-        
-        let vault_id = self.add_known_vault(vault_name, path)?;
-        self.set_current_vault(Some(vault_id))?;
-        Ok(())
-    }
 
     /// Get vault location (for backward compatibility)
     #[deprecated(note = "Use get_current_vault instead")]

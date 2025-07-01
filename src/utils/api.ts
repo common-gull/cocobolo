@@ -123,14 +123,6 @@ export const api = {
     }
   },
 
-  async verifyVaultPassword(path: string, password: string): Promise<boolean> {
-    try {
-      return await invoke<boolean>('verify_vault_password', { path, password });
-    } catch (error) {
-      throw new ApiError('Failed to verify vault password', error);
-    }
-  },
-
   // Vault unlock and session management
   async getVaultRateLimitStatus(path: string): Promise<RateLimitInfo> {
     try {
@@ -164,7 +156,6 @@ export const api = {
     }
   },
 
-  // Note management
   async createNote(
     vaultPath: string,
     sessionId: string,
@@ -341,7 +332,6 @@ export const api = {
     }
   },
 
-  // Multi-vault management
   async addKnownVault(request: AddVaultRequest): Promise<AddVaultResult> {
     try {
       return await invoke<AddVaultResult>('add_known_vault', { request });
@@ -363,14 +353,6 @@ export const api = {
       return await invoke<KnownVault[]>('get_known_vaults');
     } catch (error) {
       throw new ApiError('Failed to get known vaults', error);
-    }
-  },
-
-  async getCurrentVault(): Promise<KnownVault | null> {
-    try {
-      return await invoke<KnownVault | null>('get_current_vault');
-    } catch (error) {
-      throw new ApiError('Failed to get current vault', error);
     }
   },
 
@@ -406,11 +388,4 @@ export const api = {
     }
   },
 
-  async cleanupInvalidVaults(): Promise<string[]> {
-    try {
-      return await invoke<string[]>('cleanup_invalid_vaults');
-    } catch (error) {
-      throw new ApiError('Failed to cleanup invalid vaults', error);
-    }
-  },
 }; 

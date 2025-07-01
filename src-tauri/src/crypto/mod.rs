@@ -58,10 +58,6 @@ impl SecurePassword {
     pub fn len(&self) -> usize {
         self.password.len()
     }
-
-    pub fn is_empty(&self) -> bool {
-        self.password.is_empty()
-    }
 }
 
 impl fmt::Debug for SecurePassword {
