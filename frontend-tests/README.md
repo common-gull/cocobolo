@@ -15,7 +15,6 @@ The testing setup allows you to:
 ```
 frontend-tests/
 ├── mocks/           # Tauri API mocks using Playwright
-├── fixtures/        # Test data and fixtures
 ├── e2e/            # Playwright end-to-end tests
 ├── utils/          # Test helper functions
 └── README.md       # This file
@@ -36,7 +35,6 @@ npm install
 The Tauri API mocking setup includes:
 
 - **`mocks/tauri-api-mock.ts`** - Playwright-based mocks that replace Tauri's invoke function
-- **`fixtures/test-data.ts`** - Realistic test data for consistent testing
 
 ### Playwright Setup
 
@@ -72,11 +70,10 @@ npm run test:e2e:ui
 
 The mocks provide realistic test data including:
 
-- **Vaults**: Personal Notes, Work Notes, Archive
-- **Notes**: Welcome note, meeting notes, recipes, whiteboards
+- **Vaults**: Personal Notes, Work Notes
+- **Notes**: Welcome note, meeting notes
 - **Authentication**: Password `correct-password` unlocks vaults
-- **Folders**: work, personal, archive, projects
-- **Tags**: Various tags for filtering and organization
+- **Folders**: work folder with sample content
 
 ## Test Structure
 
@@ -90,21 +87,9 @@ The mocks provide realistic test data including:
 
 The `utils/test-helpers.ts` file provides common functions:
 
-- `unlockVault()` - Authenticate and unlock a vault
-- `createNote()` - Create a new note with title and content
-- `searchNotes()` - Search for notes
-- `mockApiResponse()` - Mock specific API responses
-- And many more...
-
-### Test Fixtures
-
-The `fixtures/test-data.ts` file contains:
-
-- Mock vault data
-- Sample notes and metadata
-- Test scenarios (empty vault, full vault, etc.)
-- Common passwords and paths
-- Error and success messages
+- `setupMocks()` - Setup Tauri API mocks
+- `clearMocks()` - Clear mocks between tests
+- `mockTauriCommand()` - Mock specific Tauri commands
 
 ## Writing Tests
 
@@ -112,49 +97,27 @@ The `fixtures/test-data.ts` file contains:
 
 ```typescript
 import { test, expect } from '@playwright/test';
-import { unlockVault, createNote } from '../utils/test-helpers';
+import { setupMocks, clearMocks } from '../utils/test-helpers';
 
 test.describe('Feature Name', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupMocks(page);
+  });
+
+  test.afterEach(async ({ page }) => {
+    await clearMocks(page);
+  });
+
   test('should do something', async ({ page }) => {
-    await unlockVault(page);
-    await createNote(page, 'Test Note', 'Test content');
-    await expect(page.locator('text=Test Note')).toBeVisible();
+    await page.goto('/vault-unlock');
+    await page.fill('input[type="password"]', 'correct-password');
+    await page.click('button:has-text("Unlock Vault")');
+    await expect(page).toHaveURL('/app');
   });
 });
 ```
 
-### Using Mock Data
-
-```typescript
-import { mockVaults, testPasswords } from '../fixtures/test-data';
-
-test('should work with mock data', async ({ page }) => {
-  // Use predefined mock data
-  await page.goto('/');
-  await expect(page.locator(`text=${mockVaults[0].name}`)).toBeVisible();
-});
-```
-
-### Custom API Mocking
-
-```typescript
-import { mockApiResponse } from '../utils/test-helpers';
-
-test('should handle API errors', async ({ page }) => {
-  await mockApiResponse(page, 'get_notes_list', { error: 'Network error' }, 500);
-  await page.goto('/app');
-  await expect(page.locator('text=Error loading notes')).toBeVisible();
-});
-```
-
 ## Configuration
-
-### Vite Test Config
-
-The `vite.test.config.ts` file:
-- Runs on port 3000 (different from Tauri's 1420)
-- Enables test mode environment variables
-- Removes Tauri-specific constraints
 
 ### Playwright Config
 
@@ -170,13 +133,13 @@ The `playwright.config.ts` file:
 
 - Password `correct-password` will successfully unlock vaults
 - Any other password will fail with "Invalid password"
-- Rate limiting is disabled by default
+- Rate limiting is simulated
 
 ### Notes
 
 - CRUD operations work as expected
-- Auto-save is simulated with delays
-- Search and filtering work with mock data
+- Auto-save is simulated
+- Folder creation and management work
 
 ### Vaults
 
@@ -186,16 +149,11 @@ The `playwright.config.ts` file:
 
 ## Debugging
 
-### View Mock Responses
-
-When running in development mode, mock responses are logged to the console.
-
 ### Screenshots and Videos
 
 Failed tests automatically capture:
 - Screenshots at the point of failure
 - Video recordings of the entire test
-- Network traces for debugging
 
 ### Interactive Debugging
 
@@ -205,47 +163,27 @@ Use Playwright's UI mode for step-by-step debugging:
 npm run test:e2e:ui
 ```
 
-## CI/CD Integration
-
-The tests are configured to work in CI environments:
-- Reduced parallelism on CI
-- Automatic retries for flaky tests
-- HTML report generation
-- Artifact collection for failures
-
 ## Best Practices
 
 1. **Use test helpers** - Don't repeat common operations
-2. **Use fixtures** - Reuse mock data across tests
-3. **Test user workflows** - Focus on end-to-end user journeys
-4. **Mock realistically** - Keep mock data close to real data
-5. **Test error states** - Don't just test happy paths
-6. **Use data-testid** - Add test IDs to components for reliable selection
-7. **Wait for state changes** - Use proper waits instead of arbitrary timeouts
+2. **Test user workflows** - Focus on end-to-end user journeys
+3. **Mock realistically** - Keep mock data close to real data
+4. **Test error states** - Don't just test happy paths
+5. **Wait for state changes** - Use proper waits instead of arbitrary timeouts
 
 ## Troubleshooting
 
 ### Common Issues
 
 **Tests fail to start dev server:**
-- Check that port 3000 is available
+- Check that the required port is available
 - Ensure all dependencies are installed
 
 **Mocks not working:**
-- Verify MSW service worker is registered
-- Check browser console for MSW logs
+- Verify mocks are properly set up in beforeEach
+- Check browser console for errors
 
 **Tests are flaky:**
 - Add proper waits for async operations
 - Use `page.waitForLoadState()` after navigation
-- Avoid `page.waitForTimeout()` in favor of specific waits
-
-**TypeScript errors:**
-- Ensure test files import types correctly
-- Check that mock data matches type definitions
-
-### Getting Help
-
-- Check the Playwright documentation: https://playwright.dev/
-- Review existing tests for examples
-- Use the interactive UI mode for debugging 
+- Avoid `page.waitForTimeout()` in favor of specific waits 
