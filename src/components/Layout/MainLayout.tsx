@@ -1,4 +1,5 @@
 import { ReactNode, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router';
 import { 
   AppShell, 
   Group, 
@@ -33,7 +34,6 @@ interface MainLayoutProps {
   vaultPath?: string;
   selectedNoteId?: string | undefined;
   onLogout?: () => void;
-  onSelectNote?: (noteId: string) => void;
   onCreateNote?: () => void;
   onCreateWhiteboard?: () => void;
   onNavigate?: (view: string) => void;
@@ -47,7 +47,6 @@ export const MainLayout = React.memo(function MainLayout({
   vaultPath,
   selectedNoteId,
   onLogout,
-  onSelectNote,
   onCreateNote,
   onCreateWhiteboard,
   showSidebar = true 
@@ -55,7 +54,13 @@ export const MainLayout = React.memo(function MainLayout({
 
   
   const { theme, setTheme } = useTheme();
+  const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Handle note selection from sidebar
+  const handleSelectNote = useCallback((noteId: string) => {
+    navigate(`/documents/${noteId}`);
+  }, [navigate]);
 
   const handleThemeChange = useCallback((newTheme: 'light' | 'dark' | 'system') => {
     setTheme(newTheme);
@@ -184,7 +189,7 @@ export const MainLayout = React.memo(function MainLayout({
                     vaultPath={vaultPath}
                     sessionId={sessionId}
                     selectedNoteId={selectedNoteId}
-                    onSelectNote={onSelectNote}
+                    onSelectNote={handleSelectNote}
                     onCreateNote={handleCreateNote}
                     onCreateWhiteboard={onCreateWhiteboard || (() => {})}
                   />

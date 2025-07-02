@@ -3,7 +3,6 @@ import { Outlet, useNavigate, useLocation } from 'react-router';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { api } from '../utils/api';
 import { MainLayout } from '../components/Layout/MainLayout';
-import { useNoteUpdates } from '../hooks/useNoteUpdates';
 import { 
   addNoteAtom,
   sessionIdAtom,
@@ -30,7 +29,6 @@ export default function AppLayout() {
   
   const initializeSession = useSetAtom(initializeVaultSessionAtom);
   const clearSession = useSetAtom(clearVaultSessionAtom);
-  const { handleNoteUpdated, handleNoteRemoved } = useNoteUpdates();
   const addNote = useSetAtom(addNoteAtom);
 
   // Extract noteId from URL if we're on a document route
@@ -38,10 +36,7 @@ export default function AppLayout() {
     ? location.pathname.split('/documents/')[1] || undefined
     : undefined;
 
-  // Handle note selection from sidebar
-  const handleSelectNote = (noteId: string) => {
-    navigate(`/documents/${noteId}`);
-  };
+
 
   // Redirect invalid document URLs to app
   useEffect(() => {
@@ -188,7 +183,7 @@ export default function AppLayout() {
       sessionId={sessionId!}
       vaultPath={vaultPath!}
       selectedNoteId={selectedNoteId}
-      onSelectNote={handleSelectNote}
+
       onLogout={handleLogout}
       onCreateNote={handleCreateNote}
       onCreateWhiteboard={handleCreateWhiteboard}
@@ -197,9 +192,7 @@ export default function AppLayout() {
       <Outlet context={{ 
         sessionId, 
         vaultInfo, 
-        vaultPath, 
-        handleNoteUpdated, 
-        handleNoteRemoved 
+        vaultPath
       }} />
     </MainLayout>
   );
