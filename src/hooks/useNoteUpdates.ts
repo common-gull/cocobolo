@@ -1,10 +1,10 @@
 import { useSetAtom } from 'jotai';
-import { updateNoteAtom, deleteNoteAtom } from '../stores/notesStore';
+import { updateNoteAtom, removeNoteAtom } from '../stores/notesStore';
 import type { Note, NoteMetadata } from '../types';
 
 export function useNoteUpdates() {
   const updateNote = useSetAtom(updateNoteAtom);
-  const deleteNote = useSetAtom(deleteNoteAtom);
+  const removeNote = useSetAtom(removeNoteAtom);
 
   const handleNoteUpdated = (updatedNote: Note) => {
     const noteMetadata: NoteMetadata = {
@@ -21,9 +21,9 @@ export function useNoteUpdates() {
     updateNote(noteMetadata);
   };
 
-  const handleNoteDeleted = async (vaultPath: string, sessionId: string, noteId: string): Promise<boolean> => {
-    return await deleteNote({ vaultPath, sessionId, noteId });
+  const handleNoteRemoved = (noteId: string) => {
+    removeNote(noteId);
   };
 
-  return { handleNoteUpdated, handleNoteDeleted };
+  return { handleNoteUpdated, handleNoteRemoved };
 } 

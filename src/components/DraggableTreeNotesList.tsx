@@ -32,7 +32,7 @@ import {
   addFolderAtom 
 } from '../stores/notesStore';
 import './NotesList.css';
-import {useNavigate} from "react-router";
+
 
 interface DraggableTreeNotesListProps {
   vaultPath: string;
@@ -275,7 +275,7 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [dragItem, setDragItem] = useState<DragItem | null>(null);
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
-  const navigate = useNavigate();
+
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -446,7 +446,7 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
   }, []);
 
   const handleNoteClick = (noteId: string) => {
-    navigate(`/documents/${noteId}`)
+    onSelectNote?.(noteId);
   };
 
   const handleCreateFolder = async () => {
@@ -511,9 +511,6 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
       }
 
       if (success) {
-        if (type === 'note' && selectedNoteId === target && onSelectNote) {
-          onSelectNote('');
-        }
         loadNotes({ vaultPath, sessionId });
       }
     } catch (error) {

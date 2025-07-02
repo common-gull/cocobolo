@@ -11,6 +11,7 @@ import {
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { api } from '../utils/api';
 import { useTheme } from '../hooks/useTheme';
+import { useNoteExistence } from '../hooks/useNoteExistence';
 import type { Note } from '../types';
 import { WhiteboardEditor } from '../components/WhiteboardEditor';
 
@@ -30,17 +31,20 @@ interface AppContext {
   vaultInfo: any;
   vaultPath: string;
   handleNoteUpdated: (note: any) => void;
-  handleNoteDeleted: (vaultPath: string, sessionId: string, noteId: string) => Promise<boolean>;
+  handleNoteRemoved: (noteId: string) => void;
 }
 
 export default function Document() {
   const { noteId } = useParams<{ noteId: string }>();
   const navigate = useNavigate();
   const { effectiveTheme } = useTheme();
-  const { sessionId, vaultPath, handleNoteUpdated, handleNoteDeleted } = useOutletContext<AppContext>();
+  const { sessionId, vaultPath, handleNoteUpdated, handleNoteRemoved } = useOutletContext<AppContext>();
   
   const [note, setNote] = useState<Note | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Check if note still exists and navigate back if it doesn't
+  useNoteExistence(noteId);
 
   useEffect(() => {
     if (!noteId || !sessionId || !vaultPath) return;
@@ -71,15 +75,11 @@ export default function Document() {
     setError(errorMessage);
   }, []);
 
-  const handleNoteDeletedLocal = useCallback(async (noteIdToDelete: string) => {
-    if (vaultPath && sessionId) {
-      const success = await handleNoteDeleted(vaultPath, sessionId, noteIdToDelete);
-      if (success) {
-        // Navigate back to main view after deletion
-        navigate('/app', { replace: true });
-      }
-    }
-  }, [vaultPath, sessionId, handleNoteDeleted, navigate]);
+  const handleNoteDeletedLocal = useCallback((noteIdToDelete: string) => {
+    // Remove from state and navigate back
+    handleNoteRemoved(noteIdToDelete);
+    navigate('/app', { replace: true });
+  }, [handleNoteRemoved, navigate]);
 
   if (error) {
     return (
@@ -118,9 +118,7 @@ export default function Document() {
           onCancel={handleCloseEditor}
           onError={handleEditorError}
           onNoteUpdated={handleNoteUpdated}
-          onNoteDeleted={async (noteId: string) => {
-            await handleNoteDeletedLocal(noteId);
-          }}
+          onNoteDeleted={handleNoteDeletedLocal}
         />
       ) : (
         <MarkdownEditor

@@ -23,7 +23,7 @@ interface MarkdownEditorProps {
   onClose: () => void;
   onError: (error: string) => void;
   onNoteUpdated?: (note: Note) => void;
-  onNoteDeleted?: (noteId: string) => Promise<void>;
+  onNoteDeleted?: (noteId: string) => void;
 }
 
 interface MarkdownEditorCoreProps {
@@ -448,9 +448,11 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const handleDeleteNote = useCallback(async () => {
     try {
       const success = await api.deleteNote(vaultPath, sessionId, note.id);
-      if (success && onNoteDeleted) {
-        await onNoteDeleted(note.id);
-      } else if (!success) {
+      if (success) {
+        if (onNoteDeleted) {
+          onNoteDeleted(note.id);
+        }
+      } else {
         onError('Failed to delete note');
       }
     } catch (error) {

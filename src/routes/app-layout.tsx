@@ -30,13 +30,18 @@ export default function AppLayout() {
   
   const initializeSession = useSetAtom(initializeVaultSessionAtom);
   const clearSession = useSetAtom(clearVaultSessionAtom);
-  const { handleNoteUpdated, handleNoteDeleted } = useNoteUpdates();
+  const { handleNoteUpdated, handleNoteRemoved } = useNoteUpdates();
   const addNote = useSetAtom(addNoteAtom);
 
   // Extract noteId from URL if we're on a document route
   const selectedNoteId = location.pathname.startsWith('/documents/') 
     ? location.pathname.split('/documents/')[1] || undefined
     : undefined;
+
+  // Handle note selection from sidebar
+  const handleSelectNote = (noteId: string) => {
+    navigate(`/documents/${noteId}`);
+  };
 
   // Redirect invalid document URLs to app
   useEffect(() => {
@@ -183,6 +188,7 @@ export default function AppLayout() {
       sessionId={sessionId!}
       vaultPath={vaultPath!}
       selectedNoteId={selectedNoteId}
+      onSelectNote={handleSelectNote}
       onLogout={handleLogout}
       onCreateNote={handleCreateNote}
       onCreateWhiteboard={handleCreateWhiteboard}
@@ -193,7 +199,7 @@ export default function AppLayout() {
         vaultInfo, 
         vaultPath, 
         handleNoteUpdated, 
-        handleNoteDeleted 
+        handleNoteRemoved 
       }} />
     </MainLayout>
   );
