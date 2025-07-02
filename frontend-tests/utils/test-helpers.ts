@@ -1,8 +1,28 @@
 import { Page, expect } from '@playwright/test';
-import { setupTauriMocks, mockTauriCommand, clearTauriMocks } from '../mocks/tauri-api-mock';
+import { 
+  setupTauriMocks, 
+  clearTauriMocks,
+  mockTauriCommand,
+  mockTauriCommandStatic,
+  mockTauriCommandSequence,
+  mockTauriCommandDynamic,
+  getTauriCommandCallCount,
+  resetTauriCommandCallCount,
+  MockConfig,
+  MockResponse
+} from '../mocks/tauri-api-mock';
 
 // Re-export for convenience
-export { mockTauriCommand };
+export { 
+  mockTauriCommand,
+  mockTauriCommandStatic,
+  mockTauriCommandSequence,
+  mockTauriCommandDynamic,
+  getTauriCommandCallCount,
+  resetTauriCommandCallCount,
+  type MockConfig,
+  type MockResponse
+};
 
 /**
  * Helper functions for Playwright tests
@@ -103,6 +123,129 @@ export async function createVault(
   await page.fill('input[type="password"][placeholder="Confirm password"]', password);
   
   await page.click('button:has-text("Create Vault")');
+}
+
+/**
+ * Test helper for simulating network failures or slow responses
+ */
+export async function mockNetworkConditions(
+  page: Page,
+  command: string,
+  condition: 'slow' | 'failure' | 'timeout'
+) {
+  switch (condition) {
+    case 'slow':
+      await mockTauriCommandSequence(page, command, [
+        { response: null, delay: 2000, shouldFail: false }
+      ]);
+      break;
+    case 'failure':
+      await mockTauriCommandStatic(page, command, {
+        shouldFail: true,
+        errorMessage: 'Network error'
+      });
+      break;
+    case 'timeout':
+      await mockTauriCommandSequence(page, command, [
+        { response: null, delay: 10000, shouldFail: true, errorMessage: 'Request timeout' }
+      ]);
+      break;
+  }
+}
+
+/**
+ * Test helper for simulating authentication scenarios
+ */
+export async function mockAuthScenario(
+  page: Page,
+  scenario: 'success' | 'wrong-password' | 'rate-limited'
+) {
+  switch (scenario) {
+    case 'success':
+      await mockTauriCommandStatic(page, 'unlock_vault', {
+        success: true,
+        session_id: 'mock-session-123',
+        vault_info: {
+          name: 'Test Vault',
+          created_at: '2025-01-01T00:00:00Z',
+          version: '1.0.0',
+          is_encrypted: true
+        }
+      });
+      break;
+    case 'wrong-password':
+      await mockTauriCommandStatic(page, 'unlock_vault', {
+        success: false,
+        error_message: 'Invalid password'
+      });
+      break;
+    case 'rate-limited':
+      await mockTauriCommandStatic(page, 'unlock_vault', {
+        success: false,
+        error_message: 'Too many failed attempts. Try again later.'
+      });
+      break;
+  }
+}
+
+/**
+ * Test helper for simulating note operations with different outcomes
+ */
+export async function mockNoteOperation(
+  page: Page,
+  operation: 'create' | 'save' | 'delete' | 'load',
+  outcome: 'success' | 'failure' | 'permission-denied'
+) {
+  const command = operation === 'create' ? 'create_note' :
+                  operation === 'save' ? 'save_note' :
+                  operation === 'delete' ? 'delete_note' :
+                  'load_note';
+
+  switch (outcome) {
+    case 'success':
+      if (operation === 'delete') {
+        await mockTauriCommandStatic(page, command, true);
+      } else if (operation === 'load') {
+        await mockTauriCommandStatic(page, command, {
+          id: 'test-note-1',
+          title: 'Test Note',
+          content: 'Test content',
+          note_type: 'text',
+          created_at: '2025-01-01T00:00:00Z',
+          updated_at: '2025-01-01T00:00:00Z',
+          tags: []
+        });
+      } else {
+        await mockTauriCommandStatic(page, command, {
+          success: true,
+          note: {
+            id: 'test-note-1',
+            title: 'Test Note',
+            content: 'Test content',
+            note_type: 'text',
+            created_at: '2025-01-01T00:00:00Z',
+            updated_at: '2025-01-01T00:00:00Z',
+            tags: []
+          }
+        });
+      }
+      break;
+    case 'failure':
+      if (operation === 'delete') {
+        await mockTauriCommandStatic(page, command, false);
+      } else {
+        await mockTauriCommandStatic(page, command, {
+          success: false,
+          error_message: `Failed to ${operation} note`
+        });
+      }
+      break;
+    case 'permission-denied':
+      await mockTauriCommand(page, command, {
+        static: { shouldFail: true, errorMessage: 'Permission denied' }
+      });
+      break;
+  }
 }
 
 /**
