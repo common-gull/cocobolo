@@ -132,8 +132,7 @@ export const addFolderAtom = atom(
 
 // Helper function to generate unique folder names
 export const generateUniquefolderNameAtom = atom(
-  null,
-  (get, _set, baseName: string = 'New Folder') => {
+  (get) => (baseName: string = 'New Folder') => {
     const currentFolders = get(foldersAtom);
     
     // Check if base name is available

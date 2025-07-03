@@ -329,7 +329,7 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
   const error = useAtomValue(notesErrorAtom);
   const loadNotes = useSetAtom(loadNotesAtom);
   const addFolder = useSetAtom(addFolderAtom);
-  const generateUniquefolderName = useSetAtom(generateUniquefolderNameAtom);
+  const generateUniquefolderName = useAtomValue(generateUniquefolderNameAtom);
 
   // Local state
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());

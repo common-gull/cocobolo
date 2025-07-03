@@ -194,14 +194,140 @@ test.describe('Notes Management', () => {
     const createFolderButton = page.locator('button[title="Create New Folder"]');
     await expect(createFolderButton).toBeVisible();
     
-    // Mock the prompt dialog to return a folder name
-    await page.evaluate(() => {
-      (window as any).prompt = () => 'Test Folder';
-    });
-    
     await createFolderButton.click();
 
+    // Should create an input field with "New Folder" that's immediately editable
+    const folderInput = page.locator('input[value="New Folder"]');
+    await expect(folderInput).toBeVisible();
+    
+    // Type a new name and press Enter
+    await folderInput.fill('Test Folder');
+    await page.locator('input[value="Test Folder"]').press('Enter');
+    
+    // Should show the renamed folder as text (no longer editing)
     await expect(page.locator('text=Test Folder')).toBeVisible();
+    await expect(page.locator('input[value="New Folder"]')).not.toBeVisible();
+  });
+
+  test('should rename folder via right-click context menu', async ({ page }) => {
+    // Wait for the page to fully load
+    await page.waitForLoadState('networkidle');
+    
+    // First create a folder
+    const createFolderButton = page.locator('button[title="Create New Folder"]');
+    await createFolderButton.click();
+    
+    // Wait for New Folder input to appear and finish editing
+    const folderInput = page.locator('input[value="New Folder"]');
+    await expect(folderInput).toBeVisible();
+    await folderInput.press('Enter'); // Confirm the default name
+    
+    // Wait for it to become text (no longer editing)
+    await expect(page.locator('text=New Folder')).toBeVisible();
+    
+    // Right-click on the folder to open context menu
+    await page.locator('text=New Folder').click({ button: 'right' });
+    
+    // Click the rename option in context menu
+    await expect(page.locator('text=Rename Folder')).toBeVisible();
+    await page.click('text=Rename Folder');
+    
+    // Should open inline editing mode
+    const renameInput = page.locator('input[value="New Folder"]');
+    await expect(renameInput).toBeVisible();
+    
+    // Type new name and confirm
+    await renameInput.fill('Renamed Folder');
+    await page.locator('input[value="Renamed Folder"]').press('Enter');
+    
+    // Should show the renamed folder
+    await expect(page.locator('text=Renamed Folder')).toBeVisible();
+    await expect(page.locator('text=New Folder')).not.toBeVisible();
+  });
+
+  test('should cancel folder rename with Escape key', async ({ page }) => {
+    // Wait for the page to fully load
+    await page.waitForLoadState('networkidle');
+    
+    // First create a folder
+    const createFolderButton = page.locator('button[title="Create New Folder"]');
+    await createFolderButton.click();
+    
+    // Wait for New Folder input to appear and finish editing
+    const folderInput = page.locator('input[value="New Folder"]');
+    await expect(folderInput).toBeVisible();
+    await folderInput.press('Enter'); // Confirm the default name
+    
+    // Wait for it to become text (no longer editing)
+    await expect(page.locator('text=New Folder')).toBeVisible();
+    
+    // Right-click on the folder to open context menu
+    await page.locator('text=New Folder').click({ button: 'right' });
+    await page.click('text=Rename Folder');
+    
+    // Should open inline editing mode
+    const renameInput = page.locator('input[value="New Folder"]');
+    await expect(renameInput).toBeVisible();
+    
+    // Type new name but press Escape to cancel
+    await renameInput.fill('Should Not Save');
+    await page.locator('input[value="Should Not Save"]').press('Escape');
+    
+    // Should still show the original folder name
+    await expect(page.locator('text=New Folder')).toBeVisible();
+    await expect(page.locator('text=Should Not Save')).not.toBeVisible();
+  });
+
+  test('should handle duplicate folder names', async ({ page }) => {
+    // Wait for the page to fully load
+    await page.waitForLoadState('networkidle');
+    
+    // Create first folder
+    const createFolderButton = page.locator('button[title="Create New Folder"]');
+    await createFolderButton.click();
+    
+    // Wait for New Folder input to appear and finish editing
+    let folderInput = page.locator('input[value="New Folder"]');
+    await expect(folderInput).toBeVisible();
+    await folderInput.press('Enter'); // Confirm the default name
+    
+    // Wait for it to become text (no longer editing)
+    await expect(page.locator('text=New Folder')).toBeVisible();
+    
+    // Create second folder
+    await createFolderButton.click();
+    
+    // Should create "New Folder 1" automatically
+    folderInput = page.locator('input[value="New Folder 1"]');
+    await expect(folderInput).toBeVisible();
+    await folderInput.press('Enter'); // Confirm the default name
+    
+    // Wait for it to become text
+    await expect(page.locator('text=New Folder 1')).toBeVisible();
+    
+    // Both folders should exist
+    await expect(page.getByRole('button', { name: 'New Folder (0)' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'New Folder 1 (0)' })).toBeVisible();
+  });
+
+  test('should cancel folder rename with empty name but keep the folder', async ({ page }) => {
+    // Wait for the page to fully load
+    await page.waitForLoadState('networkidle');
+    
+    // Create folder
+    const createFolderButton = page.locator('button[title="Create New Folder"]');
+    await createFolderButton.click();
+    
+    // Wait for New Folder input to appear
+    const folderInput = page.locator('input[value="New Folder"]');
+    await expect(folderInput).toBeVisible();
+    
+    // Clear the name and press Enter
+    await folderInput.fill('');
+    await page.locator('input[value=""]').press('Enter');
+    
+    // Should keep the folder with the original name (New Folder)
+    await expect(page.locator('text=New Folder')).toBeVisible();
   });
 
   test('should create whiteboard note', async ({ page }) => {
