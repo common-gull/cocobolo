@@ -39,6 +39,7 @@ import {
   IconBulb,
   IconTrash,
   IconPencil,
+  IconEdit,
   
 } from '@tabler/icons-react';
 
@@ -122,6 +123,7 @@ export const Icons = {
   lightbulb: createIcon(IconBulb),
   trash: createIcon(IconTrash),
   whiteboard: createIcon(IconPencil),
+  edit: createIcon(IconEdit),
 } as const;
 
 export type IconName = keyof typeof Icons; 

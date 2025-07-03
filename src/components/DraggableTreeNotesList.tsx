@@ -29,7 +29,8 @@ import {
   notesLoadingAtom, 
   notesErrorAtom,
   loadNotesAtom,
-  addFolderAtom 
+  addFolderAtom,
+  generateUniquefolderNameAtom
 } from '../stores/notesStore';
 import './NotesList.css';
 
@@ -68,7 +69,12 @@ const DraggableFolder = React.memo(function DraggableFolder({
   onToggleFolder, 
   onSelectNote, 
   onContextMenu,
-  overId 
+  overId,
+  editingFolder,
+  editingName,
+  onEditingNameChange,
+  onConfirmRename,
+  onCancelRename
 }: {
   folder: FolderNode;
   level: number;
@@ -76,7 +82,12 @@ const DraggableFolder = React.memo(function DraggableFolder({
   onToggleFolder: (path: string) => void;
   onSelectNote: ((noteId: string) => void) | undefined;
   onContextMenu: (e: React.MouseEvent, type: 'folder' | 'note', target: string) => void;
-  overId?: UniqueIdentifier | null | undefined;
+  overId?: UniqueIdentifier | null;
+  editingFolder?: string | null;
+  editingName?: string;
+  onEditingNameChange: (name: string) => void;
+  onConfirmRename: (folderPath: string, newName: string) => Promise<void>;
+  onCancelRename: () => void;
 }) {
   const {
     attributes,
@@ -98,6 +109,7 @@ const DraggableFolder = React.memo(function DraggableFolder({
 
   const paddingLeft = level * 16;
   const isDropTarget = isOver || overId === `folder-${folder.path}`;
+  const isEditing = editingFolder === folder.path;
 
   // Combine refs
   const setNodeRef = (node: HTMLElement | null) => {
@@ -105,21 +117,64 @@ const DraggableFolder = React.memo(function DraggableFolder({
     setDropNodeRef(node);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      onConfirmRename?.(folder.path, editingName || '');
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onCancelRename?.();
+    }
+  };
+
+  const handleInputBlur = () => {
+    onConfirmRename?.(folder.path, editingName || '');
+  };
+
+  const handleClick = () => {
+    if (!isEditing) {
+      onToggleFolder(folder.path);
+    }
+  };
+
   return (
     <div ref={setNodeRef} style={style} className="tree-folder">
       <div 
         className={`tree-folder-header ${isDropTarget ? 'drop-target' : ''}`}
         style={{ paddingLeft: `${paddingLeft}px` }}
-        onClick={() => onToggleFolder(folder.path)}
-        onContextMenu={(e) => onContextMenu(e, 'folder', folder.path)}
-        {...attributes}
-        {...listeners}
+        onClick={handleClick}
+        onContextMenu={(e) => !isEditing && onContextMenu(e, 'folder', folder.path)}
+        {...(!isEditing ? attributes : {})}
+        {...(!isEditing ? listeners : {})}
       >
         <span className={`tree-folder-icon ${folder.isExpanded ? 'expanded' : ''}`}>
           <Icons.chevronRight size="sm" />
         </span>
         <Icons.folder size="sm" />
-        <span className="tree-folder-name">{folder.name}</span>
+        {isEditing ? (
+          <input
+            type="text"
+            value={editingName}
+            onChange={(e) => onEditingNameChange?.(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleInputBlur}
+            autoFocus
+            className="tree-folder-name-input"
+            style={{
+              border: '1px solid var(--mantine-color-blue-filled)',
+              borderRadius: '2px',
+              padding: '2px 4px',
+              fontSize: 'inherit',
+              fontFamily: 'inherit',
+              background: 'var(--mantine-color-body)',
+              color: 'var(--mantine-color-text)',
+              outline: 'none',
+              minWidth: '100px'
+            }}
+          />
+        ) : (
+          <span className="tree-folder-name">{folder.name}</span>
+        )}
         <span className="tree-folder-count">
           ({folder.notes.length + folder.children.reduce((sum, child) => sum + child.notes.length, 0)})
         </span>
@@ -137,7 +192,12 @@ const DraggableFolder = React.memo(function DraggableFolder({
               onToggleFolder={onToggleFolder}
               onSelectNote={onSelectNote}
               onContextMenu={onContextMenu}
-              overId={overId}
+              overId={overId ?? null}
+              editingFolder={editingFolder ?? null}
+              editingName={editingName ?? ''}
+              onEditingNameChange={onEditingNameChange || (() => {})}
+              onConfirmRename={onConfirmRename || (async () => {})}
+              onCancelRename={onCancelRename || (() => {})}
             />
           ))}
           
@@ -269,6 +329,7 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
   const error = useAtomValue(notesErrorAtom);
   const loadNotes = useSetAtom(loadNotesAtom);
   const addFolder = useSetAtom(addFolderAtom);
+  const generateUniquefolderName = useAtomValue(generateUniquefolderNameAtom);
 
   // Local state
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -276,6 +337,9 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
   const [dragItem, setDragItem] = useState<DragItem | null>(null);
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
 
+  // Editing state for folder names
+  const [editingFolder, setEditingFolder] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState<string>('');
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -450,18 +514,66 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
   };
 
   const handleCreateFolder = async () => {
-    const folderName = prompt('Enter folder name:');
-    if (!folderName || !folderName.trim()) {
-      return;
-    }
-
+    // Generate a unique folder name
+    const uniqueName = generateUniquefolderName('New Folder');
+    
     try {
-      await api.createFolder(vaultPath, sessionId, folderName.trim());
-      addFolder(folderName.trim());
+      await api.createFolder(vaultPath, sessionId, uniqueName);
+      addFolder(uniqueName);
+      
+      // Start editing the newly created folder
+      setEditingFolder(uniqueName);
+      setEditingName(uniqueName);
+      
+      // Expand the parent folder if the new folder is nested
+      const parentPath = uniqueName.includes('/') 
+        ? uniqueName.substring(0, uniqueName.lastIndexOf('/'))
+        : '';
+      if (parentPath) {
+        expandFolder(parentPath);
+      }
     } catch (error) {
       console.error('Failed to create folder:', error);
       alert('Failed to create folder. Please try again.');
     }
+  };
+
+  const handleStartRename = (folderPath: string) => {
+    const folderName = folderPath.includes('/') 
+      ? folderPath.substring(folderPath.lastIndexOf('/') + 1)
+      : folderPath;
+    setEditingFolder(folderPath);
+    setEditingName(folderName);
+    setContextMenu(prev => ({ ...prev, opened: false }));
+  };
+
+  const handleConfirmRename = async (folderPath: string, newName: string) => {
+    if (!newName.trim() || newName.trim() === folderPath.split('/').pop()) {
+      // No change or empty name, just cancel editing
+      setEditingFolder(null);
+      setEditingName('');
+      return;
+    }
+
+    try {
+      const success = await api.renameFolder(vaultPath, sessionId, folderPath, newName.trim());
+      if (success) {
+        loadNotes({ vaultPath, sessionId });
+      } else {
+        alert('Failed to rename folder. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to rename folder:', error);
+      alert('Failed to rename folder. Please try again.');
+    } finally {
+      setEditingFolder(null);
+      setEditingName('');
+    }
+  };
+
+  const handleCancelRename = () => {
+    setEditingFolder(null);
+    setEditingName('');
   };
 
   const handleContextMenu = (e: React.MouseEvent, type: 'folder' | 'note', target: string) => {
@@ -475,12 +587,18 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
     });
   };
 
-  const handleContextMenuAction = () => {
+  const handleContextMenuDelete = () => {
     const note = notes.find(n => n.id === contextMenu.target);
     const title = contextMenu.type === 'note' ? (note?.title || 'Unknown Note') : contextMenu.target;
     
     showDeleteConfirmation(contextMenu.type, contextMenu.target, title);
     setContextMenu(prev => ({ ...prev, opened: false }));
+  };
+
+  const handleContextMenuRename = () => {
+    if (contextMenu.type === 'folder') {
+      handleStartRename(contextMenu.target);
+    }
   };
 
   const showDeleteConfirmation = (type: 'folder' | 'note', target: string, title: string) => {
@@ -743,7 +861,12 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
               onToggleFolder={toggleFolder}
               onSelectNote={handleNoteClick}
               onContextMenu={handleContextMenu}
-              overId={overId}
+              overId={overId ?? null}
+              editingFolder={editingFolder ?? null}
+              editingName={editingName ?? ''}
+              onEditingNameChange={setEditingName}
+              onConfirmRename={handleConfirmRename}
+              onCancelRename={handleCancelRename}
             />
           ))}
           
@@ -789,10 +912,18 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
             />
           </Menu.Target>
           <Menu.Dropdown>
+            {contextMenu.type === 'folder' && (
+              <Menu.Item
+                leftSection={<Icons.edit style={{ width: rem(14), height: rem(14) }} />}
+                onClick={handleContextMenuRename}
+              >
+                Rename Folder
+              </Menu.Item>
+            )}
             <Menu.Item
               color="red"
               leftSection={<IconTrash style={{ width: rem(14), height: rem(14) }} />}
-              onClick={handleContextMenuAction}
+              onClick={handleContextMenuDelete}
             >
               {contextMenu.type === 'folder' ? 'Delete Folder' : 'Delete Note'}
             </Menu.Item>

@@ -492,6 +492,38 @@ export async function setupTauriMocks(page: Page) {
           }
           return true;
 
+        case 'rename_folder':
+          if (args?.sessionId !== mockState.currentSession) {
+            throw new Error('Invalid session');
+          }
+          
+          const oldFolderPath = args?.folderPath;
+          const newName = args?.newName;
+          
+          if (!oldFolderPath || !newName) {
+            return false;
+          }
+          
+          // Remove old folder name
+          const folderIndex = mockState.folders.findIndex(f => f === oldFolderPath);
+          if (folderIndex !== -1) {
+            mockState.folders.splice(folderIndex, 1);
+          }
+          
+          // Add new folder name
+          if (!mockState.folders.includes(newName)) {
+            mockState.folders.push(newName);
+          }
+          
+          // Update any notes that were in the old folder
+          mockState.notes.forEach(note => {
+            if ((note as any).folder_path === oldFolderPath) {
+              (note as any).folder_path = newName;
+            }
+          });
+          
+          return true;
+
         default:
           throw new Error('Mock command not implemented: ' + cmd);
       }
