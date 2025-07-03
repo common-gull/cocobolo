@@ -621,6 +621,36 @@ async fn move_folder(
     }
 }
 
+#[tauri::command]
+async fn rename_folder(
+    vault_path: String,
+    session_id: String,
+    folder_path: String,
+    new_name: String
+) -> Result<bool, AppError> {
+    let path_buf = std::path::PathBuf::from(&vault_path);
+    let vault_manager = VaultManager::new(&path_buf);
+    
+    // Calculate the new path based on the new name
+    let old_path_parts: Vec<&str> = folder_path.split('/').collect();
+    let parent_path = if old_path_parts.len() > 1 {
+        old_path_parts[..old_path_parts.len() - 1].join("/")
+    } else {
+        String::new()
+    };
+    
+    let new_path = if parent_path.is_empty() {
+        new_name
+    } else {
+        format!("{}/{}", parent_path, new_name)
+    };
+    
+    match vault_manager.move_folder(&session_id, &folder_path, &new_path) {
+        Ok(_) => Ok(true),
+        Err(_) => Ok(false), // Return false instead of error for simpler handling
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -661,7 +691,8 @@ pub fn run() {
             get_recent_vaults,
             get_favorite_vaults,
             update_vault_metadata,
-            cleanup_invalid_vaults
+            cleanup_invalid_vaults,
+            rename_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

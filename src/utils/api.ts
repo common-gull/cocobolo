@@ -332,6 +332,24 @@ export const api = {
     }
   },
 
+  async renameFolder(
+    vaultPath: string,
+    sessionId: string,
+    folderPath: string,
+    newName: string
+  ): Promise<boolean> {
+    try {
+      return await invoke<boolean>('rename_folder', {
+        vaultPath,
+        sessionId,
+        folderPath,
+        newName
+      });
+    } catch (error) {
+      throw new ApiError('Failed to rename folder', error);
+    }
+  },
+
   async addKnownVault(request: AddVaultRequest): Promise<AddVaultResult> {
     try {
       return await invoke<AddVaultResult>('add_known_vault', { request });

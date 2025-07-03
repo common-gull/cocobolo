@@ -130,6 +130,29 @@ export const addFolderAtom = atom(
   }
 );
 
+// Helper function to generate unique folder names
+export const generateUniquefolderNameAtom = atom(
+  null,
+  (get, _set, baseName: string = 'New Folder') => {
+    const currentFolders = get(foldersAtom);
+    
+    // Check if base name is available
+    if (!currentFolders.includes(baseName)) {
+      return baseName;
+    }
+    
+    // Try incrementing numbers
+    let counter = 1;
+    let candidateName = `${baseName} ${counter}`;
+    while (currentFolders.includes(candidateName)) {
+      counter++;
+      candidateName = `${baseName} ${counter}`;
+    }
+    
+    return candidateName;
+  }
+);
+
 export const loadNotesAtom = atom(
   null,
   async (_get, set, { vaultPath, sessionId }: { vaultPath: string; sessionId: string }) => {
