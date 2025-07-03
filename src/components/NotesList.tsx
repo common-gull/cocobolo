@@ -639,11 +639,6 @@ export function TreeNotesList({
       }
 
       if (success) {
-        // If we deleted the currently selected note, deselect it
-        if (type === 'note' && selectedNoteId === target && onSelectNote) {
-          onSelectNote('');
-        }
-        
         // Reload notes to update the UI
         loadNotes({ vaultPath, sessionId });
       }

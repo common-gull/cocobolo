@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { setupMocks, clearMocks } from '../utils/test-helpers';
+import { 
+  setupMocks, 
+  clearMocks, 
+} from '../utils/test-helpers';
 
 test.describe('Notes Management', () => {
   test.beforeEach(async ({ page }) => {
@@ -75,13 +78,15 @@ test.describe('Notes Management', () => {
     await expect(titleInput).toHaveValue('Updated Welcome to Cocobolo');
   });
 
-  test('should delete a note', async ({ page }) => {
-    // TODO - Fix this test. The app should navigate back to the app page after deleting a note
+  test('should delete a note from editor and navigate to app', async ({ page }) => {
     // Click on a note to open it
     await page.click('text=Welcome to Cocobolo');
     
     // Wait for editor to load
     await page.waitForLoadState('networkidle');
+    
+    // Verify we're on the document page
+    await expect(page).toHaveURL(/\/documents\/note-1/);
     
     // Click the context menu button (three dots)
     const contextMenuButton = page.locator('.context-menu-trigger').first();
@@ -96,7 +101,89 @@ test.describe('Notes Management', () => {
     await expect(page.locator('text=Are you sure you want to delete this note?')).toBeVisible();
     
     // Confirm deletion in the modal
+    await Promise.all([
+      page.waitForURL('/app', { timeout: 10000 }),
+      page.click('button:has-text("Delete")')
+    ]);
+    
+    // Should be back on the main app page
+    await expect(page).toHaveURL('/app');
+    
+    // The deleted note should no longer appear in the sidebar
+    await expect(page.locator('text=Welcome to Cocobolo')).not.toBeVisible();
+    await expect(page.locator('text=Welcome to Test Vault')).toBeVisible();
+  });
+
+  test('should cancel note deletion', async ({ page }) => {
+    // Click on a note to open it
+    await page.click('text=Welcome to Cocobolo');
+    
+    // Wait for editor to load
+    await page.waitForLoadState('networkidle');
+    
+    // Click the context menu button
+    const contextMenuButton = page.locator('.context-menu-trigger').first();
+    await expect(contextMenuButton).toBeVisible();
+    await contextMenuButton.click();
+    
+    // Click delete option
+    await page.click('text=Delete Note');
+    
+    // Verify the delete confirmation modal is shown
+    await expect(page.locator('h2:has-text("Delete Note")')).toBeVisible();
+    
+    // Cancel the deletion
+    await page.click('button:has-text("Cancel")');
+    
+    // Should still be on the document page
+    await expect(page).toHaveURL(/\/documents\/note-1/);
+    
+    // Note should still exist in sidebar
+    await page.goBack();
+    await expect(page.locator('text=Welcome to Cocobolo')).toBeVisible();
+  });
+
+  test('should delete note from sidebar and navigate to app if currently viewing deleted note', async ({ page }) => {
+    // Click on a note to open it
+    await page.click('text=Welcome to Cocobolo');
+    
+    // Wait for editor to load
+    await page.waitForLoadState('networkidle');
+    
+    // Verify we're viewing the note
+    await expect(page).toHaveURL(/\/documents\/note-1/);
+
+    await page.locator("text=Welcome to Cocobolo").first().click( { button: "right" });
     await page.click('button:has-text("Delete")');
+
+    await page.locator('button:has-text("Delete")').filter({hasNotText: 'Note'}).click()
+
+    // Should be back on the main app page
+    await expect(page).toHaveURL('/app');
+
+    // The deleted note should no longer appear in the sidebar
+    await expect(page.locator('text=Welcome to Cocobolo')).not.toBeVisible();
+    await expect(page.locator('text=Welcome to Test Vault')).toBeVisible();
+  });
+
+  test('should maintain app state when deleting non-current note', async ({ page }) => {
+    // First, expand the work folder to access Meeting Notes
+    await page.click('text=work');
+    await expect(page.locator('text=Meeting Notes')).toBeVisible();
+    
+    // Navigate to Meeting Notes
+    await page.click('text=Meeting Notes');
+    await expect(page).toHaveURL(/\/documents\/note-2/);
+    
+    // This test verifies that when viewing one note,
+    // the UI remains stable and functional.
+    await expect(page.locator('input.editor-title-input')).toBeVisible();
+    await expect(page.locator('input.editor-title-input')).toHaveValue('Meeting Notes');
+    
+    // Test editing functionality
+    const titleInput = page.locator('input.editor-title-input');
+    await titleInput.fill('Updated Meeting Notes');
+    await expect(titleInput).toHaveValue('Updated Meeting Notes');
   });
 
   test('should create folder', async ({ page }) => {

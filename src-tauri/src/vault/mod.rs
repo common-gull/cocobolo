@@ -262,10 +262,6 @@ impl NotesIndex {
         Ok(())
     }
 
-    pub fn get_folders(&self) -> &[FolderMetadata] {
-        &self.folders
-    }
-
     pub fn move_note(&mut self, note_id: &str, new_folder_path: Option<String>) -> Result<(), String> {
         // Find the note and update its folder path
         if let Some(note) = self.notes.iter_mut().find(|n| n.id == note_id) {
@@ -427,16 +423,6 @@ impl VaultManager {
     pub fn vault_exists(&self) -> bool {
         let vault_info_file = self.vault_path.join(".cocobolo_vault");
         vault_info_file.exists()
-    }
-
-    /// Check if vault is encrypted
-    pub fn is_vault_encrypted(&self) -> Result<bool, VaultError> {
-        if !self.vault_exists() {
-            return Ok(false);
-        }
-
-        let vault_info = self.load_vault_info()?;
-        Ok(vault_info.is_encrypted)
     }
 
     /// Get rate limit status for vault
@@ -666,10 +652,6 @@ impl VaultManager {
         &self.vault_path
     }
 
-    /// Get the crypto manager for password validation
-    pub fn crypto_manager(&self) -> &CryptoManager {
-        &self.crypto_manager
-    }
 
     /// Create a new note in the vault
     pub fn create_note(&self, session_id: &str, title: Option<String>, content: Option<String>, tags: Option<Vec<String>>, folder_path: Option<String>, note_type: Option<String>) -> Result<Note, VaultError> {

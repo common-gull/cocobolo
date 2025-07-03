@@ -25,8 +25,6 @@ interface AppContext {
   sessionId: string;
   vaultInfo: any;
   vaultPath: string;
-  handleNoteUpdated: (note: any) => void;
-  handleNoteDeleted: (vaultPath: string, sessionId: string, noteId: string) => Promise<boolean>;
 }
 
 export default function App() {

@@ -1,6 +1,27 @@
 import { Page } from '@playwright/test';
 
 /**
+ * Configuration for mock responses
+ */
+export interface MockResponse {
+  response: any;
+  delay?: number; // Optional delay in milliseconds
+  shouldFail?: boolean; // Whether this response should throw an error
+  errorMessage?: string; // Custom error message if shouldFail is true
+}
+
+export interface MockConfig {
+  // Static response - always returns the same value
+  static?: any;
+  // Sequence of responses - returns responses in order, repeats last one
+  sequence?: MockResponse[];
+  // Function that generates response based on arguments
+  dynamic?: (args: any, callCount: number) => any;
+  // Reset call count after this many calls (useful for testing cycles)
+  resetAfter?: number;
+}
+
+/**
  * Mock Tauri API calls using a direct script injection approach
  * This sets up the mocks before the page loads any Tauri code
  */
@@ -66,13 +87,89 @@ export async function setupTauriMocks(page: Page) {
       ]
     };
 
+    // Enhanced mock configuration storage
+    const mockConfigs: Record<string, any> = {};
+    const callCounts: Record<string, number> = {};
+
+    // Helper function to get response from mock configuration
+    const getMockResponse = async (cmd: string, args: any) => {
+      const config = mockConfigs[cmd];
+      if (!config) return null;
+
+      // Initialize call count
+      if (!(cmd in callCounts)) {
+        callCounts[cmd] = 0;
+      }
+      const currentCount = callCounts[cmd]!;
+      callCounts[cmd] = currentCount + 1;
+
+      // Reset call count if specified
+      if (config.resetAfter && callCounts[cmd]! > config.resetAfter) {
+        callCounts[cmd] = 1;
+      }
+
+      let result: any;
+      let delay = 0;
+      let shouldFail = false;
+      let errorMessage = 'Mock error';
+
+      if (config.static !== undefined) {
+        // Static response
+        result = config.static;
+      } else if (config.sequence && config.sequence.length > 0) {
+        // Sequence responses
+        const sequence = config.sequence;
+        const index = Math.min(callCounts[cmd]! - 1, sequence.length - 1);
+        const mockResponse = sequence[index];
+        
+        if (mockResponse) {
+          result = mockResponse.response;
+          delay = mockResponse.delay || 0;
+          shouldFail = mockResponse.shouldFail || false;
+          errorMessage = mockResponse.errorMessage || 'Mock error';
+        }
+      } else if (config.dynamic) {
+        // Dynamic response
+        result = config.dynamic(args, callCounts[cmd]!);
+      } else if (config.dynamicFnString) {
+        // Dynamic response from string function
+        try {
+          // Evaluate the function string and call it
+          const dynamicFn = eval(`(${config.dynamicFnString})`);
+          result = dynamicFn(args, callCounts[cmd]!);
+        } catch (error) {
+          console.error('Error evaluating dynamic function:', error);
+          result = { error: 'Dynamic function evaluation failed' };
+        }
+      }
+
+      // Apply delay if specified
+      if (delay > 0) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+      // Throw error if specified
+      if (shouldFail) {
+        throw new Error(errorMessage);
+      }
+
+      return result;
+    };
+
     // Mock invoke function
     const mockInvoke = async (cmd: string, args: any = {}) => {
       console.log('Mock Tauri invoke:', cmd, args);
 
+      // Check for custom mock configuration first
+      const customResponse = await getMockResponse(cmd, args);
+      if (customResponse !== null) {
+        return customResponse;
+      }
+
       // Add small delay to simulate async behavior
       await new Promise(resolve => setTimeout(resolve, 10));
 
+      // Default mock implementations
       switch (cmd) {
         case 'get_app_info':
           return {
@@ -198,41 +295,60 @@ export async function setupTauriMocks(page: Page) {
         case 'get_vault_rate_limit_status':
           const timeSinceLastAttempt = Date.now() - mockState.lastFailedAttempt;
           const isRateLimited = mockState.rateLimitAttempts >= 3 && timeSinceLastAttempt < 60000;
-          
           return {
+            attempts: mockState.rateLimitAttempts,
+            max_attempts: 3,
             is_rate_limited: isRateLimited,
-            seconds_remaining: isRateLimited ? Math.ceil((60000 - timeSinceLastAttempt) / 1000) : undefined
+            seconds_remaining: isRateLimited ? Math.ceil((60000 - timeSinceLastAttempt) / 1000) : 0
           };
 
         case 'check_session_status':
-          return args?.sessionId === mockState.currentSession;
+          return mockState.currentSession === args?.sessionId;
+
+        case 'logout':
+          mockState.currentSession = null;
+          return true;
+
+        case 'create_vault':
+          // Mock vault creation - always succeeds with test data
+          return {
+            success: true,
+            vault_info: {
+              name: args?.name || 'New Vault',
+              created_at: new Date().toISOString(),
+              version: '1.0.0',
+              is_encrypted: true
+            },
+            session_id: 'mock-session-123',
+            error_message: null
+          };
 
         case 'get_notes_list':
           if (args?.sessionId !== mockState.currentSession) {
             throw new Error('Invalid session');
           }
-          
+
           return mockState.notes.map(note => ({
             id: note.id,
             title: note.title,
             note_type: note.note_type,
+            content_preview: note.content.substring(0, 100),
             created_at: note.created_at,
             updated_at: note.updated_at,
             tags: note.tags,
-            ...(note.folder_path && { folder_path: note.folder_path }),
-            content_preview: note.content.substring(0, 100)
+            ...(note.folder_path && { folder_path: note.folder_path })
           }));
 
         case 'load_note':
           if (args?.sessionId !== mockState.currentSession) {
             throw new Error('Invalid session');
           }
-          
+
           const note = mockState.notes.find(n => n.id === args?.noteId);
           if (!note) {
             throw new Error('Note not found');
           }
-          
+
           return note;
 
         case 'create_note':
@@ -242,7 +358,7 @@ export async function setupTauriMocks(page: Page) {
 
           const newNote = {
             id: 'note-' + Date.now(),
-            title: args?.title || 'Untitled Note',
+            title: args?.title || 'Untitled',
             content: args?.content || '',
             note_type: args?.noteType || 'text',
             created_at: new Date().toISOString(),
@@ -251,7 +367,7 @@ export async function setupTauriMocks(page: Page) {
             ...(args?.folderPath && { folder_path: args.folderPath })
           };
 
-          mockState.notes.push(newNote);
+          mockState.notes.unshift(newNote);
 
           return {
             success: true,
@@ -403,8 +519,10 @@ export async function setupTauriMocks(page: Page) {
       }
     };
 
-    // Store mock state globally for test access
+    // Store mock state and configuration globally for test access
     (window as any).__MOCK_STATE__ = mockState;
+    (window as any).__MOCK_CONFIGS__ = mockConfigs;
+    (window as any).__CALL_COUNTS__ = callCounts;
   });
 }
 
@@ -414,6 +532,9 @@ export async function setupTauriMocks(page: Page) {
 export async function clearTauriMocks(page: Page) {
   await page.evaluate(() => {
     const mockState = (window as any).__MOCK_STATE__;
+    const mockConfigs = (window as any).__MOCK_CONFIGS__;
+    const callCounts = (window as any).__CALL_COUNTS__;
+    
     if (mockState) {
       mockState.currentSession = null;
       mockState.rateLimitAttempts = 0;
@@ -443,22 +564,121 @@ export async function clearTauriMocks(page: Page) {
         }
       ];
     }
+
+    // Clear custom mock configurations
+    if (mockConfigs) {
+      Object.keys(mockConfigs).forEach(key => {
+        delete mockConfigs[key];
+      });
+    }
+
+    // Clear call counts
+    if (callCounts) {
+      Object.keys(callCounts).forEach(key => {
+        delete callCounts[key];
+      });
+    }
   });
 }
 
 /**
- * Set up custom mock responses for specific commands
+ * Set up custom mock responses for specific commands with enhanced configuration
  */
 export async function mockTauriCommand(
   page: Page, 
   command: string, 
+  config: MockConfig
+) {
+  await page.evaluate(({ command, config }) => {
+    const mockConfigs = (window as any).__MOCK_CONFIGS__;
+    if (mockConfigs) {
+      // Handle dynamic functions by converting them to strings
+      if (config.dynamic) {
+        const dynamicFn = config.dynamic;
+        if (typeof dynamicFn === 'function') {
+          // Convert function to string and store it separately
+          (mockConfigs as any)[command] = {
+            ...config,
+            dynamic: null,
+            dynamicFnString: dynamicFn.toString()
+          };
+        } else {
+          mockConfigs[command] = config;
+        }
+      } else {
+        mockConfigs[command] = config;
+      }
+    }
+  }, { command, config });
+}
+
+/**
+ * Convenience function to set a static response for a command
+ */
+export async function mockTauriCommandStatic(
+  page: Page,
+  command: string,
   response: any
 ) {
-  await page.evaluate(({ command, response }) => {
-    // Store custom responses
-    if (!(window as any).__MOCK_RESPONSES__) {
-      (window as any).__MOCK_RESPONSES__ = {};
+  await mockTauriCommand(page, command, { static: response });
+}
+
+/**
+ * Convenience function to set a sequence of responses for a command
+ */
+export async function mockTauriCommandSequence(
+  page: Page,
+  command: string,
+  responses: MockResponse[]
+) {
+  await mockTauriCommand(page, command, { sequence: responses });
+}
+
+/**
+ * Convenience function to set a dynamic response function for a command
+ */
+export async function mockTauriCommandDynamic(
+  page: Page,
+  command: string,
+  responseFn: (args: any, callCount: number) => any
+) {
+  // Convert function to string for serialization
+  const fnString = responseFn.toString();
+  
+  await page.evaluate(({ command, fnString }) => {
+    const mockConfigs = (window as any).__MOCK_CONFIGS__;
+    if (mockConfigs) {
+      mockConfigs[command] = {
+        dynamicFnString: fnString
+      };
     }
-    (window as any).__MOCK_RESPONSES__[command] = response;
-  }, { command, response });
+  }, { command, fnString });
+}
+
+/**
+ * Get call count for a specific command (useful for assertions)
+ */
+export async function getTauriCommandCallCount(
+  page: Page,
+  command: string
+): Promise<number> {
+  return await page.evaluate((command) => {
+    const callCounts = (window as any).__CALL_COUNTS__;
+    return callCounts?.[command] || 0;
+  }, command);
+}
+
+/**
+ * Reset call count for a specific command
+ */
+export async function resetTauriCommandCallCount(
+  page: Page,
+  command: string
+) {
+  await page.evaluate((command) => {
+    const callCounts = (window as any).__CALL_COUNTS__;
+    if (callCounts) {
+      callCounts[command] = 0;
+    }
+  }, command);
 } 

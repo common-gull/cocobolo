@@ -1,5 +1,6 @@
 import { useEffect, useState, lazy, Suspense, useCallback } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { 
   Container, 
   Loader,
@@ -11,7 +12,8 @@ import {
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { api } from '../utils/api';
 import { useTheme } from '../hooks/useTheme';
-import type { Note } from '../types';
+import { notesAtom, updateNoteAtom, removeNoteAtom } from '../stores/notesStore';
+import type { Note, NoteMetadata } from '../types';
 import { WhiteboardEditor } from '../components/WhiteboardEditor';
 
 // Lazy load the editor components for better performance
@@ -29,18 +31,50 @@ interface AppContext {
   sessionId: string;
   vaultInfo: any;
   vaultPath: string;
-  handleNoteUpdated: (note: any) => void;
-  handleNoteDeleted: (vaultPath: string, sessionId: string, noteId: string) => Promise<boolean>;
 }
 
 export default function Document() {
   const { noteId } = useParams<{ noteId: string }>();
   const navigate = useNavigate();
   const { effectiveTheme } = useTheme();
-  const { sessionId, vaultPath, handleNoteUpdated, handleNoteDeleted } = useOutletContext<AppContext>();
+  const { sessionId, vaultPath } = useOutletContext<AppContext>();
   
   const [note, setNote] = useState<Note | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // State management hooks
+  const notes = useAtomValue(notesAtom);
+  const updateNote = useSetAtom(updateNoteAtom);
+  const removeNote = useSetAtom(removeNoteAtom);
+
+  // Check if note still exists and navigate back if it doesn't
+  useEffect(() => {
+    if (!noteId) return;
+
+    // Check if the note exists in the current notes state
+    const noteExists = notes.some(note => note.id === noteId);
+    
+    // If notes array is not empty and the note doesn't exist, navigate back
+    if (notes.length > 0 && !noteExists) {
+      navigate('/app', { replace: true });
+    }
+  }, [noteId, notes, navigate]);
+
+  // Note update handler
+  const handleNoteUpdated = useCallback((updatedNote: Note) => {
+    const noteMetadata: NoteMetadata = {
+      id: updatedNote.id,
+      title: updatedNote.title,
+      note_type: updatedNote.note_type,
+      content_preview: updatedNote.content.substring(0, 100),
+      created_at: updatedNote.created_at,
+      updated_at: updatedNote.updated_at,
+      tags: updatedNote.tags,
+      ...(updatedNote.folder_path && { folder_path: updatedNote.folder_path })
+    };
+    
+    updateNote(noteMetadata);
+  }, [updateNote]);
 
   useEffect(() => {
     if (!noteId || !sessionId || !vaultPath) return;
@@ -71,15 +105,11 @@ export default function Document() {
     setError(errorMessage);
   }, []);
 
-  const handleNoteDeletedLocal = useCallback(async (noteIdToDelete: string) => {
-    if (vaultPath && sessionId) {
-      const success = await handleNoteDeleted(vaultPath, sessionId, noteIdToDelete);
-      if (success) {
-        // Navigate back to main view after deletion
-        navigate('/app', { replace: true });
-      }
-    }
-  }, [vaultPath, sessionId, handleNoteDeleted, navigate]);
+  const handleNoteDeleted = useCallback((noteIdToDelete: string) => {
+    // Remove from state and navigate back
+    removeNote(noteIdToDelete);
+    navigate('/app', { replace: true });
+  }, [removeNote, navigate]);
 
   if (error) {
     return (
@@ -118,9 +148,7 @@ export default function Document() {
           onCancel={handleCloseEditor}
           onError={handleEditorError}
           onNoteUpdated={handleNoteUpdated}
-          onNoteDeleted={async (noteId: string) => {
-            await handleNoteDeletedLocal(noteId);
-          }}
+          onNoteDeleted={handleNoteDeleted}
         />
       ) : (
         <MarkdownEditor
@@ -131,7 +159,7 @@ export default function Document() {
           onClose={handleCloseEditor}
           onError={handleEditorError}
           onNoteUpdated={handleNoteUpdated}
-          onNoteDeleted={handleNoteDeletedLocal}
+          onNoteDeleted={handleNoteDeleted}
         />
       )}
     </Suspense>
