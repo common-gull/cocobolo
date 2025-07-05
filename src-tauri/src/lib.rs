@@ -151,10 +151,10 @@ async fn select_vault_directory() -> Result<Option<String>, AppError> {
 #[tauri::command]
 async fn validate_vault_location(path: String) -> Result<VaultLocationInfo, AppError> {
     let path_buf = std::path::PathBuf::from(&path);
-    
+
     let is_valid = path_buf.exists();
     let is_directory = path_buf.is_dir();
-    
+
     if !is_valid {
         return Ok(VaultLocationInfo {
             path,
@@ -201,10 +201,10 @@ async fn validate_vault_location(path: String) -> Result<VaultLocationInfo, AppE
 #[tauri::command]
 async fn set_vault_location(path: String) -> Result<(), AppError> {
     let mut config = AppConfig::load()?;
-    
+
     // Use the new multi-vault system
     let path_buf = std::path::PathBuf::from(&path);
-    
+
     // Check if this vault already exists in known_vaults
     if let Some(existing_vault) = config.known_vaults.iter().find(|v| v.path == path_buf) {
         // Set it as current vault
@@ -215,11 +215,11 @@ async fn set_vault_location(path: String) -> Result<(), AppError> {
             .and_then(|n| n.to_str())
             .unwrap_or("Vault")
             .to_string();
-        
+
         let vault_id = config.add_known_vault(vault_name, path_buf)?;
         config.set_current_vault(Some(vault_id))?;
     }
-    
+
     config.save()?;
     Ok(())
 }
@@ -227,22 +227,20 @@ async fn set_vault_location(path: String) -> Result<(), AppError> {
 #[tauri::command]
 async fn get_current_vault_location() -> Result<Option<String>, AppError> {
     let config = AppConfig::load()?;
-    
-    // First try the new multi-vault approach
+
+    // Use the modern multi-vault approach
     if let Some(current_vault) = config.get_current_vault() {
         return Ok(Some(current_vault.path.display().to_string()));
     }
-    
-    // Fall back to legacy approach for backward compatibility
-    #[allow(deprecated)]
-    Ok(config.get_vault_location().map(|p| p.display().to_string()))
+
+    Ok(None)
 }
 
 // New multi-vault commands
 #[tauri::command]
 async fn add_known_vault(request: AddVaultRequest) -> Result<AddVaultResult, AppError> {
     let mut config = AppConfig::load()?;
-    
+
     match config.add_known_vault(request.name, std::path::PathBuf::from(request.path)) {
         Ok(vault_id) => {
             config.save()?;
@@ -339,7 +337,7 @@ async fn validate_password_strength(password: String) -> Result<PasswordStrength
 async fn check_vault_setup_status(path: String) -> Result<VaultSetupInfo, AppError> {
     let path_buf = std::path::PathBuf::from(&path);
     let vault_manager = VaultManager::new(&path_buf);
-    
+
     if !vault_manager.vault_exists() {
         return Ok(VaultSetupInfo {
             needs_password: true,
@@ -350,7 +348,7 @@ async fn check_vault_setup_status(path: String) -> Result<VaultSetupInfo, AppErr
 
     let vault_info = vault_manager.load_vault_info()?;
     let is_encrypted = vault_info.is_encrypted;
-    
+
     Ok(VaultSetupInfo {
         needs_password: is_encrypted,
         is_encrypted,
@@ -363,7 +361,7 @@ async fn create_encrypted_vault(path: String, vault_name: String, password: Stri
     let path_buf = std::path::PathBuf::from(&path);
     let vault_manager = VaultManager::new(&path_buf);
     let secure_password = SecurePassword::new(password);
-    
+
     let vault_info = vault_manager.initialize_encrypted_vault(vault_name, &secure_password)?;
     Ok(vault_info)
 }
@@ -373,7 +371,7 @@ async fn verify_vault_password(path: String, password: String) -> Result<bool, A
     let path_buf = std::path::PathBuf::from(&path);
     let vault_manager = VaultManager::new(&path_buf);
     let secure_password = SecurePassword::new(password);
-    
+
     Ok(vault_manager.verify_vault_password(&secure_password)?)
 }
 
@@ -383,9 +381,9 @@ async fn verify_vault_password(path: String, password: String) -> Result<bool, A
 async fn get_vault_rate_limit_status(path: String) -> Result<RateLimitInfo, AppError> {
     let path_buf = std::path::PathBuf::from(&path);
     let vault_manager = VaultManager::new(&path_buf);
-    
+
     let (is_rate_limited, seconds_remaining) = vault_manager.get_rate_limit_status();
-    
+
     Ok(RateLimitInfo {
         is_rate_limited,
         seconds_remaining,
@@ -397,12 +395,12 @@ async fn unlock_vault(path: String, password: String) -> Result<VaultUnlockResul
     let path_buf = std::path::PathBuf::from(&path);
     let vault_manager = VaultManager::new(&path_buf);
     let secure_password = SecurePassword::new(password);
-    
+
     match vault_manager.unlock_vault(&secure_password) {
         Ok(session_id) => {
             // Get vault info for the response
             let vault_info = vault_manager.load_vault_info().ok();
-            
+
             Ok(VaultUnlockResult {
                 success: true,
                 session_id: Some(session_id),
@@ -420,7 +418,7 @@ async fn unlock_vault(path: String, password: String) -> Result<VaultUnlockResul
                 VaultError::NotEncrypted(_) => "This vault is not encrypted.".to_string(),
                 _ => "Failed to unlock vault.".to_string(),
             };
-            
+
             Ok(VaultUnlockResult {
                 success: false,
                 session_id: None,
@@ -455,7 +453,7 @@ async fn create_note(
 ) -> Result<CreateNoteResult, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
-    
+
     match vault_manager.create_note(&session_id, title, content, tags, folder_path, note_type) {
         Ok(note) => Ok(CreateNoteResult {
             success: true,
@@ -468,7 +466,7 @@ async fn create_note(
                 VaultError::InvalidPassword => "Session expired. Please unlock vault again.".to_string(),
                 _ => "Failed to create note.".to_string(),
             };
-            
+
             Ok(CreateNoteResult {
                 success: false,
                 note: None,
@@ -485,7 +483,7 @@ async fn get_notes_list(
 ) -> Result<Vec<NoteMetadata>, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
-    
+
     Ok(vault_manager.get_notes_list(&session_id)?)
 }
 
@@ -496,7 +494,7 @@ async fn get_folders_list(
 ) -> Result<Vec<String>, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
-    
+
     Ok(vault_manager.get_folders_list(&session_id)?)
 }
 
@@ -508,7 +506,7 @@ async fn load_note(
 ) -> Result<Note, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
-    
+
     Ok(vault_manager.load_note(&session_id, &note_id)?)
 }
 
@@ -535,7 +533,7 @@ async fn save_note(
 ) -> Result<SaveNoteResult, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
-    
+
     match vault_manager.save_note(&session_id, &note_id, title, content, tags, folder_path) {
         Ok(note) => Ok(SaveNoteResult {
             success: true,
@@ -549,7 +547,7 @@ async fn save_note(
                 VaultError::InvalidPassword => "Session expired. Please unlock vault again.".to_string(),
                 _ => "Failed to save note.".to_string(),
             };
-            
+
             Ok(SaveNoteResult {
                 success: false,
                 note: None,
@@ -567,7 +565,7 @@ async fn delete_note(
 ) -> Result<bool, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
-    
+
     match vault_manager.delete_note(&session_id, &note_id) {
         Ok(_) => Ok(true),
         Err(_) => Ok(false), // Return false instead of error for simpler handling
@@ -582,7 +580,7 @@ async fn delete_folder(
 ) -> Result<bool, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
-    
+
     match vault_manager.delete_folder(&session_id, &folder_path) {
         Ok(_) => Ok(true),
         Err(_) => Ok(false), // Return false instead of error for simpler handling
@@ -598,7 +596,7 @@ async fn move_note(
 ) -> Result<bool, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
-    
+
     match vault_manager.move_note(&session_id, &note_id, new_folder_path) {
         Ok(_) => Ok(true),
         Err(_) => Ok(false), // Return false instead of error for simpler handling
@@ -614,7 +612,7 @@ async fn move_folder(
 ) -> Result<bool, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
-    
+
     match vault_manager.move_folder(&session_id, &old_path, &new_path) {
         Ok(_) => Ok(true),
         Err(_) => Ok(false), // Return false instead of error for simpler handling
@@ -630,7 +628,7 @@ async fn rename_folder(
 ) -> Result<bool, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
-    
+
     // Calculate the new path based on the new name
     let old_path_parts: Vec<&str> = folder_path.split('/').collect();
     let parent_path = if old_path_parts.len() > 1 {
@@ -638,13 +636,13 @@ async fn rename_folder(
     } else {
         String::new()
     };
-    
+
     let new_path = if parent_path.is_empty() {
         new_name
     } else {
         format!("{}/{}", parent_path, new_name)
     };
-    
+
     match vault_manager.move_folder(&session_id, &folder_path, &new_path) {
         Ok(_) => Ok(true),
         Err(_) => Ok(false), // Return false instead of error for simpler handling
@@ -720,7 +718,7 @@ mod tests {
     #[test]
     fn test_get_app_info() {
         let info = get_app_info().unwrap();
-        
+
         assert_eq!(info.name, "Cocobolo");
         assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
         assert_eq!(info.description, "A secure, encrypted note-taking application");
@@ -757,9 +755,9 @@ mod tests {
     async fn test_validate_vault_location_valid() {
         let temp_dir = setup_temp_dir();
         let path = temp_dir.path().to_string_lossy().to_string();
-        
+
         let result = validate_vault_location(path.clone()).await.unwrap();
-        
+
         assert_eq!(result.path, path);
         assert!(result.is_valid);
         assert!(result.is_writable);
@@ -770,9 +768,9 @@ mod tests {
     #[tokio::test]
     async fn test_validate_vault_location_invalid() {
         let invalid_path = "/nonexistent/path".to_string();
-        
+
         let result = validate_vault_location(invalid_path.clone()).await.unwrap();
-        
+
         assert_eq!(result.path, invalid_path);
         assert!(!result.is_valid);
         assert!(!result.is_writable);
@@ -785,7 +783,7 @@ mod tests {
         let temp_dir = setup_temp_dir();
         let file_path = temp_dir.path().join("test_file.txt");
         std::fs::write(&file_path, "test").unwrap();
-        
+
         let result = validate_vault_location(file_path.to_string_lossy().to_string()).await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), AppError::Application(_)));
@@ -796,10 +794,10 @@ mod tests {
         let temp_dir = setup_temp_dir();
         let vault_manager = VaultManager::new(temp_dir.path());
         vault_manager.initialize_vault("Test Vault".to_string()).unwrap();
-        
+
         let path = temp_dir.path().to_string_lossy().to_string();
         let result = validate_vault_location(path.clone()).await.unwrap();
-        
+
         assert_eq!(result.path, path);
         assert!(result.is_valid);
         assert!(result.is_writable);
@@ -813,14 +811,14 @@ mod tests {
     async fn test_set_and_get_vault_location() {
         let temp_dir = setup_temp_dir();
         setup_test_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
         let path_str = vault_path.to_string_lossy().to_string();
-        
+
         // Set vault location
         set_vault_location(path_str.clone()).await.unwrap();
-        
+
         // Get vault location
         let current_location = get_current_vault_location().await.unwrap();
         assert_eq!(current_location, Some(path_str));
@@ -831,21 +829,21 @@ mod tests {
     async fn test_add_and_get_known_vaults() {
         let temp_dir = setup_temp_dir();
         setup_test_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
-        
+
         let request = AddVaultRequest {
             name: "Test Vault".to_string(),
             path: vault_path.to_string_lossy().to_string(),
         };
-        
+
         // Add vault
         let result = add_known_vault(request).await.unwrap();
         assert!(result.success);
         assert!(result.vault_id.is_some());
         assert!(result.error_message.is_none());
-        
+
         // Get known vaults
         let vaults = get_known_vaults().await.unwrap();
         assert_eq!(vaults.len(), 1);
@@ -858,22 +856,22 @@ mod tests {
     async fn test_remove_known_vault() {
         let temp_dir = setup_temp_dir();
         setup_test_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
-        
+
         let request = AddVaultRequest {
             name: "Test Vault".to_string(),
             path: vault_path.to_string_lossy().to_string(),
         };
-        
+
         let result = add_known_vault(request).await.unwrap();
         let vault_id = result.vault_id.unwrap();
-        
+
         // Remove vault
         let removed = remove_known_vault(vault_id).await.unwrap();
         assert!(removed);
-        
+
         // Verify vault is removed
         let vaults = get_known_vaults().await.unwrap();
         assert_eq!(vaults.len(), 0);
@@ -884,21 +882,21 @@ mod tests {
     async fn test_set_and_get_current_vault() {
         let temp_dir = setup_temp_dir();
         setup_test_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
-        
+
         let request = AddVaultRequest {
             name: "Test Vault".to_string(),
             path: vault_path.to_string_lossy().to_string(),
         };
-        
+
         let result = add_known_vault(request).await.unwrap();
         let vault_id = result.vault_id.unwrap();
-        
+
         // Set current vault
         set_current_vault(Some(vault_id.clone())).await.unwrap();
-        
+
         // Get current vault
         let current_vault = get_current_vault().await.unwrap();
         assert!(current_vault.is_some());
@@ -910,26 +908,26 @@ mod tests {
     async fn test_get_recent_and_favorite_vaults() {
         let temp_dir = setup_temp_dir();
         setup_test_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
-        
+
         let request = AddVaultRequest {
             name: "Test Vault".to_string(),
             path: vault_path.to_string_lossy().to_string(),
         };
-        
+
         let result = add_known_vault(request).await.unwrap();
         let vault_id = result.vault_id.unwrap();
-        
+
         // Set as current (adds to recent)
         set_current_vault(Some(vault_id.clone())).await.unwrap();
-        
+
         // Get recent vaults
         let recent_vaults = get_recent_vaults().await.unwrap();
         assert_eq!(recent_vaults.len(), 1);
         assert_eq!(recent_vaults[0].id, vault_id);
-        
+
         // Update to favorite
         let update_request = UpdateVaultMetadataRequest {
             vault_id: vault_id.clone(),
@@ -937,7 +935,7 @@ mod tests {
             is_favorite: Some(true),
         };
         update_vault_metadata(update_request).await.unwrap();
-        
+
         // Get favorite vaults
         let favorite_vaults = get_favorite_vaults().await.unwrap();
         assert_eq!(favorite_vaults.len(), 1);
@@ -950,35 +948,35 @@ mod tests {
     async fn test_cleanup_invalid_vaults() {
         let temp_dir = setup_temp_dir();
         setup_test_env(&temp_dir);
-        
+
         // Add valid vault
         let valid_path = temp_dir.path().join("valid_vault");
         std::fs::create_dir_all(&valid_path).unwrap();
-        
+
         let valid_request = AddVaultRequest {
             name: "Valid Vault".to_string(),
             path: valid_path.to_string_lossy().to_string(),
         };
         add_known_vault(valid_request).await.unwrap();
-        
+
         // Add invalid vault
         let invalid_path = temp_dir.path().join("invalid_vault");
         std::fs::create_dir_all(&invalid_path).unwrap();
-        
+
         let invalid_request = AddVaultRequest {
             name: "Invalid Vault".to_string(),
             path: invalid_path.to_string_lossy().to_string(),
         };
         let invalid_result = add_known_vault(invalid_request).await.unwrap();
-        
+
         // Remove the invalid vault directory
         std::fs::remove_dir_all(&invalid_path).unwrap();
-        
+
         // Cleanup invalid vaults
         let removed_ids = cleanup_invalid_vaults().await.unwrap();
         assert_eq!(removed_ids.len(), 1);
         assert_eq!(removed_ids[0], invalid_result.vault_id.unwrap());
-        
+
         // Verify only valid vault remains
         let vaults = get_known_vaults().await.unwrap();
         assert_eq!(vaults.len(), 1);
@@ -990,9 +988,9 @@ mod tests {
     async fn test_get_app_config() {
         let temp_dir = setup_temp_dir();
         setup_test_env(&temp_dir);
-        
+
         let config = get_app_config().await.unwrap();
-        
+
         assert_eq!(config.theme, "system");
         assert_eq!(config.auto_save_interval, 300);
         assert!(config.show_markdown_preview);
@@ -1003,12 +1001,12 @@ mod tests {
     async fn test_validate_password_strength() {
         let strong_password = "StrongPassword123!@#".to_string();
         let weak_password = "weak".to_string();
-        
+
         let strong_result = validate_password_strength(strong_password).await.unwrap();
         assert!(strong_result.is_valid);
         assert!(strong_result.score >= 4);
         assert!(strong_result.issues.is_empty());
-        
+
         let weak_result = validate_password_strength(weak_password).await.unwrap();
         assert!(!weak_result.is_valid);
         assert!(weak_result.score < 4);
@@ -1019,9 +1017,9 @@ mod tests {
     async fn test_check_vault_setup_status_no_vault() {
         let temp_dir = setup_temp_dir();
         let path = temp_dir.path().to_string_lossy().to_string();
-        
+
         let result = check_vault_setup_status(path).await.unwrap();
-        
+
         assert!(result.needs_password);
         assert!(!result.is_encrypted);
         assert!(result.vault_info.is_none());
@@ -1032,10 +1030,10 @@ mod tests {
         let temp_dir = setup_temp_dir();
         let vault_manager = VaultManager::new(temp_dir.path());
         vault_manager.initialize_vault("Test Vault".to_string()).unwrap();
-        
+
         let path = temp_dir.path().to_string_lossy().to_string();
         let result = check_vault_setup_status(path).await.unwrap();
-        
+
         assert!(!result.needs_password);
         assert!(!result.is_encrypted);
         assert!(result.vault_info.is_some());
@@ -1047,13 +1045,13 @@ mod tests {
         let path = temp_dir.path().to_string_lossy().to_string();
         let vault_name = "Test Encrypted Vault".to_string();
         let password = "TestPassword123!@#".to_string();
-        
+
         let vault_info = create_encrypted_vault(path.clone(), vault_name.clone(), password.clone()).await.unwrap();
-        
+
         assert_eq!(vault_info.name, vault_name);
         assert!(vault_info.is_encrypted);
         assert!(vault_info.crypto.is_some());
-        
+
         // Verify password works
         let is_valid = verify_vault_password(path, password).await.unwrap();
         assert!(is_valid);
@@ -1066,13 +1064,13 @@ mod tests {
         let vault_name = "Test Vault".to_string();
         let correct_password = "TestPassword123!@#".to_string();
         let wrong_password = "WrongPassword123!@#".to_string();
-        
+
         create_encrypted_vault(path.clone(), vault_name, correct_password.clone()).await.unwrap();
-        
+
         // Test correct password
         let is_valid = verify_vault_password(path.clone(), correct_password).await.unwrap();
         assert!(is_valid);
-        
+
         // Test wrong password
         let is_valid = verify_vault_password(path, wrong_password).await.unwrap();
         assert!(!is_valid);
@@ -1082,9 +1080,9 @@ mod tests {
     async fn test_get_vault_rate_limit_status() {
         let temp_dir = setup_temp_dir();
         let path = temp_dir.path().to_string_lossy().to_string();
-        
+
         let result = get_vault_rate_limit_status(path).await.unwrap();
-        
+
         assert!(!result.is_rate_limited);
         assert!(result.seconds_remaining.is_none());
     }
@@ -1096,26 +1094,26 @@ mod tests {
         let path = temp_dir.path().to_string_lossy().to_string();
         let vault_name = "Test Vault".to_string();
         let password = "TestPassword123!@#".to_string();
-        
+
         create_encrypted_vault(path.clone(), vault_name, password.clone()).await.unwrap();
-        
+
         // Unlock vault
         let unlock_result = unlock_vault(path, password).await.unwrap();
         assert!(unlock_result.success);
         assert!(unlock_result.session_id.is_some());
         assert!(unlock_result.vault_info.is_some());
         assert!(unlock_result.error_message.is_none());
-        
+
         let session_id = unlock_result.session_id.unwrap();
-        
+
         // Check session status
         let is_active = check_session_status(session_id.clone()).await.unwrap();
         assert!(is_active);
-        
+
         // Close session
         let closed = close_vault_session(session_id.clone()).await.unwrap();
         assert!(closed);
-        
+
         // Verify session is closed
         let is_active = check_session_status(session_id).await.unwrap();
         assert!(!is_active);
@@ -1129,9 +1127,9 @@ mod tests {
         let vault_name = "Test Vault".to_string();
         let correct_password = "TestPassword123!@#".to_string();
         let wrong_password = "WrongPassword123!@#".to_string();
-        
+
         create_encrypted_vault(path.clone(), vault_name, correct_password).await.unwrap();
-        
+
         let unlock_result = unlock_vault(path, wrong_password).await.unwrap();
         assert!(!unlock_result.success);
         assert!(unlock_result.session_id.is_none());
@@ -1146,19 +1144,19 @@ mod tests {
         let path = temp_dir.path().to_string_lossy().to_string();
         let vault_name = "Test Vault".to_string();
         let password = "TestPassword123!@#".to_string();
-        
+
         create_encrypted_vault(path.clone(), vault_name, password.clone()).await.unwrap();
         let unlock_result = unlock_vault(path.clone(), password).await.unwrap();
         let session_id = unlock_result.session_id.unwrap();
-        
+
         // Create folder
         create_folder(path.clone(), session_id.clone(), "test_folder".to_string()).await.unwrap();
-        
+
         // Get folders list
         let folders = get_folders_list(path.clone(), session_id.clone()).await.unwrap();
         assert_eq!(folders.len(), 1);
         assert_eq!(folders[0], "test_folder");
-        
+
         // Create note
         let create_result = create_note(
             path.clone(),
@@ -1169,27 +1167,27 @@ mod tests {
             Some("test_folder".to_string()),
             Some("text".to_string())
         ).await.unwrap();
-        
+
         assert!(create_result.success);
         assert!(create_result.note.is_some());
         assert!(create_result.error_message.is_none());
-        
+
         let note = create_result.note.unwrap();
         assert_eq!(note.title, "Test Note");
         assert_eq!(note.content, "Test content");
         assert_eq!(note.tags, vec!["tag1"]);
         assert_eq!(note.folder_path, Some("test_folder".to_string()));
-        
+
         // Get notes list
         let notes_list = get_notes_list(path.clone(), session_id.clone()).await.unwrap();
         assert_eq!(notes_list.len(), 1);
         assert_eq!(notes_list[0].id, note.id);
-        
+
         // Load note
         let loaded_note = load_note(path.clone(), session_id.clone(), note.id.clone()).await.unwrap();
         assert_eq!(loaded_note.title, "Test Note");
         assert_eq!(loaded_note.content, "Test content");
-        
+
         // Save note with changes
         let save_result = save_note(
             path.clone(),
@@ -1200,15 +1198,15 @@ mod tests {
             Some(vec!["tag1".to_string(), "tag2".to_string()]),
             Some("test_folder".to_string())
         ).await.unwrap();
-        
+
         assert!(save_result.success);
         assert!(save_result.note.is_some());
-        
+
         let updated_note = save_result.note.unwrap();
         assert_eq!(updated_note.title, "Updated Title");
         assert_eq!(updated_note.content, "Updated content");
         assert_eq!(updated_note.tags.len(), 2);
-        
+
         // Move note
         let moved = move_note(
             path.clone(),
@@ -1217,19 +1215,19 @@ mod tests {
             Some("new_folder".to_string())
         ).await.unwrap();
         assert!(moved);
-        
+
         // Delete note
         let deleted = delete_note(path.clone(), session_id.clone(), note.id).await.unwrap();
         assert!(deleted);
-        
+
         // Verify note is deleted
         let notes_list = get_notes_list(path.clone(), session_id.clone()).await.unwrap();
         assert_eq!(notes_list.len(), 0);
-        
+
         // Delete folder
         let folder_deleted = delete_folder(path.clone(), session_id.clone(), "test_folder".to_string()).await.unwrap();
         assert!(folder_deleted);
-        
+
         close_vault_session(session_id).await.unwrap();
     }
 
@@ -1240,15 +1238,15 @@ mod tests {
         let path = temp_dir.path().to_string_lossy().to_string();
         let vault_name = "Test Vault".to_string();
         let password = "TestPassword123!@#".to_string();
-        
+
         create_encrypted_vault(path.clone(), vault_name, password.clone()).await.unwrap();
         let unlock_result = unlock_vault(path.clone(), password).await.unwrap();
         let session_id = unlock_result.session_id.unwrap();
-        
+
         // Create folders
         create_folder(path.clone(), session_id.clone(), "folder1".to_string()).await.unwrap();
         create_folder(path.clone(), session_id.clone(), "folder2".to_string()).await.unwrap();
-        
+
         // Move folder
         let moved = move_folder(
             path.clone(),
@@ -1257,7 +1255,7 @@ mod tests {
             "renamed_folder".to_string()
         ).await.unwrap();
         assert!(moved);
-        
+
         // Rename folder
         let renamed = rename_folder(
             path.clone(),
@@ -1266,7 +1264,7 @@ mod tests {
             "new_name".to_string()
         ).await.unwrap();
         assert!(renamed);
-        
+
         // Verify folders
         let folders = get_folders_list(path.clone(), session_id.clone()).await.unwrap();
         assert_eq!(folders.len(), 2);
@@ -1274,7 +1272,7 @@ mod tests {
         assert!(folders.contains(&"new_name".to_string()));
         assert!(!folders.contains(&"folder1".to_string()));
         assert!(!folders.contains(&"folder2".to_string()));
-        
+
         close_vault_session(session_id).await.unwrap();
     }
 
@@ -1282,7 +1280,7 @@ mod tests {
     fn test_app_error_serialization() {
         let error = AppError::Application("Test error".to_string());
         let serialized = serde_json::to_string(&error).unwrap();
-        
+
         // Should serialize as a string
         assert!(serialized.contains("Test error"));
     }
@@ -1293,7 +1291,7 @@ mod tests {
         let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "File not found");
         let app_error = AppError::from(io_error);
         assert!(matches!(app_error, AppError::Io(_)));
-        
+
         // Test conversion from serde_json::Error
         let json_error = serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
         let app_error = AppError::from(json_error);
@@ -1309,18 +1307,18 @@ mod tests {
             tags: Some(vec!["tag1".to_string()]),
             folder_path: Some("folder".to_string()),
         };
-        
+
         let serialized = serde_json::to_string(&create_request).unwrap();
         let deserialized: CreateNoteRequest = serde_json::from_str(&serialized).unwrap();
         assert_eq!(create_request.title, deserialized.title);
-        
+
         // Test CreateNoteResult
         let create_result = CreateNoteResult {
             success: true,
             note: None,
             error_message: Some("Test error".to_string()),
         };
-        
+
         let serialized = serde_json::to_string(&create_result).unwrap();
         let deserialized: CreateNoteResult = serde_json::from_str(&serialized).unwrap();
         assert_eq!(create_result.success, deserialized.success);
@@ -1336,10 +1334,10 @@ mod tests {
             has_existing_vault: false,
             vault_info: None,
         };
-        
+
         let serialized = serde_json::to_string(&info).unwrap();
         let deserialized: VaultLocationInfo = serde_json::from_str(&serialized).unwrap();
-        
+
         assert_eq!(info.path, deserialized.path);
         assert_eq!(info.is_valid, deserialized.is_valid);
         assert_eq!(info.is_writable, deserialized.is_writable);
@@ -1354,10 +1352,10 @@ mod tests {
             vault_info: None,
             error_message: Some("Invalid password".to_string()),
         };
-        
+
         let serialized = serde_json::to_string(&result).unwrap();
         let deserialized: VaultUnlockResult = serde_json::from_str(&serialized).unwrap();
-        
+
         assert_eq!(result.success, deserialized.success);
         assert_eq!(result.session_id, deserialized.session_id);
         assert_eq!(result.error_message, deserialized.error_message);
@@ -1369,10 +1367,10 @@ mod tests {
             is_rate_limited: true,
             seconds_remaining: Some(30),
         };
-        
+
         let serialized = serde_json::to_string(&info).unwrap();
         let deserialized: RateLimitInfo = serde_json::from_str(&serialized).unwrap();
-        
+
         assert_eq!(info.is_rate_limited, deserialized.is_rate_limited);
         assert_eq!(info.seconds_remaining, deserialized.seconds_remaining);
     }
@@ -1383,7 +1381,7 @@ mod tests {
     async fn test_error_handling_invalid_session() {
         let temp_dir = setup_temp_dir();
         let path = temp_dir.path().to_string_lossy().to_string();
-        
+
         // Try to create note with invalid session
         let result = create_note(
             path,
@@ -1394,7 +1392,7 @@ mod tests {
             None,
             None
         ).await.unwrap();
-        
+
         assert!(!result.success);
         assert!(result.note.is_none());
         assert!(result.error_message.is_some());
@@ -1404,17 +1402,17 @@ mod tests {
     #[tokio::test]
     async fn test_password_validation_performance() {
         use std::time::Instant;
-        
+
         let password = "TestPassword123!@#".to_string();
         let start = Instant::now();
-        
+
         // Reduced iterations for faster tests
         for _ in 0..10 {
             let _ = validate_password_strength(password.clone()).await.unwrap();
         }
-        
+
         let elapsed = start.elapsed();
-        
+
         // Should complete 100 validations in reasonable time
         assert!(elapsed.as_secs() < 5, "Password validation took too long: {:?}", elapsed);
     }
