@@ -88,24 +88,29 @@ jobs:
             librsvg2-dev
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          override: true
+          components: rustfmt, clippy
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            src-tauri/target
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            src-tauri/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
       - name: Run Rust tests
-        run: cd src-tauri && cargo test
+        run: cd src-tauri && cargo test --jobs $(nproc) --no-fail-fast
+        env:
+          CARGO_TERM_COLOR: always
+          CARGO_INCREMENTAL: 1
+          RUST_BACKTRACE: 1
+          CARGO_BUILD_JOBS: $(nproc)
 
   type-check:
     name: 'TypeScript Type Check'
