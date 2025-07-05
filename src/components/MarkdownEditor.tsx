@@ -42,14 +42,14 @@ const MarkdownEditorCore: React.FC<MarkdownEditorCoreProps> = React.memo(({
   const editorRef = useRef<any>(null);
   const currentNoteIdRef = useRef(noteId);
   const [editorKey, setEditorKey] = useState(noteId);
-  
+
   useEffect(() => {
     if (noteId !== currentNoteIdRef.current) {
       currentNoteIdRef.current = noteId;
       setEditorKey(noteId);
     }
   }, [noteId]);
-  
+
   const extensions = useMemo(() => {
     const markdownExtension = markdown({ 
       codeLanguages: languages,
@@ -329,14 +329,15 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 }) => {
   const [title, setTitle] = useState(note.title);
   const [titleError, setTitleError] = useState('');
-  
-  // Refs for auto-save operations - no UI state for content changes
+
   const originalNoteRef = useRef(note);
   const contentRef = useRef(note.content);
   const titleRef = useRef(note.title);
   const savingRef = useRef(false);
 
-  // Update refs when note changes from outside (switching notes)
+  const lastActivityRef = useRef<number>(Date.now());
+  const activityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     if (note.id !== originalNoteRef.current.id) {
       // Completely new note
@@ -344,37 +345,48 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       setTitle(note.title);
       titleRef.current = note.title;
       contentRef.current = note.content;
+      // Reset activity tracking for new note
+      lastActivityRef.current = Date.now();
     }
   }, [note]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (activityTimeoutRef.current) {
+        clearTimeout(activityTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Silent auto-save function - no UI updates, no notifications
   const autoSave = useCallback(async () => {
     if (savingRef.current) return;
-    
+
     // Check if we have actual changes
     const original = originalNoteRef.current;
     const currentTitle = titleRef.current;
     const currentContent = contentRef.current;
-    
+
     const hasChanges = 
       currentTitle !== original.title ||
       currentContent !== original.content;
-    
+
     if (!hasChanges) return;
-    
+
     // Validate title silently
     const trimmedTitle = currentTitle.trim();
     const trimmedContent = currentContent.trim();
-    
+
     // Don't save if both title and content are empty/default
     if ((!trimmedTitle || trimmedTitle === 'Untitled') && !trimmedContent) {
       return;
     }
-    
+
     if (trimmedTitle.length > 200) return;
 
     savingRef.current = true;
-    
+
     try {
       const result: SaveNoteResult = await api.saveNote(
         vaultPath,
@@ -391,12 +403,12 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         originalNoteRef.current = result.note;
         titleRef.current = result.note.title;
         contentRef.current = result.note.content;
-        
+
         // Update UI state if the title changed on the server
         if (result.note.title !== title) {
           setTitle(result.note.title);
         }
-        
+
         // Notify parent about the update
         if (onNoteUpdated) {
           onNoteUpdated(result.note);
@@ -412,37 +424,58 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }
   }, [note.id, note.folder_path, note.tags, vaultPath, sessionId, onError, onNoteUpdated, title]);
 
-  // Debounced auto-save - completely silent
-  const debouncedAutoSave = useMemo(
-    () => debounce(autoSave, 300),
-    [autoSave]
+  // Track user activity and trigger autosave after inactivity
+  const trackActivity = useCallback(() => {
+    lastActivityRef.current = Date.now();
+
+    if (activityTimeoutRef.current) {
+      clearTimeout(activityTimeoutRef.current);
+    }
+
+    activityTimeoutRef.current = setTimeout(() => {
+      autoSave();
+    }, 300);
+  }, [autoSave]);
+
+
+  const debouncedTitleValidation = useMemo(
+    () => debounce((title: string) => {
+      if (title.trim().length === 0) {
+        setTitleError('Title cannot be empty');
+      } else if (title.length > 200) {
+        setTitleError('Title cannot exceed 200 characters');
+      } else {
+        setTitleError('');
+      }
+    }, 150),
+    []
   );
 
   // Handle content changes from editor - NO UI state updates
   const handleContentChange = useCallback((value: string) => {
     // Only update the content ref, no state changes
     contentRef.current = value;
-    
-    // Trigger silent auto-save
-    debouncedAutoSave();
-  }, [debouncedAutoSave]);
 
-  // Handle title changes - only update state for title validation
+    // Track user activity and trigger autosave after inactivity
+    trackActivity();
+  }, [trackActivity]);
+
+  // Handle title changes - optimized for better UX
   const handleTitleChange = useCallback((newTitle: string) => {
     setTitle(newTitle);
     titleRef.current = newTitle; // Keep ref in sync immediately
-    
-    if (newTitle.trim().length === 0) {
-      setTitleError('Title cannot be empty');
-    } else if (newTitle.length > 200) {
-      setTitleError('Title cannot exceed 200 characters');
-    } else {
+
+    // Clear any existing error immediately for better UX
+    if (titleError && newTitle.trim().length > 0 && newTitle.length <= 200) {
       setTitleError('');
     }
-    
-    // Trigger auto-save for title changes
-    debouncedAutoSave();
-  }, [debouncedAutoSave]);
+
+    // Debounced validation for edge cases
+    debouncedTitleValidation(newTitle);
+
+    // Track user activity and trigger autosave after inactivity
+    trackActivity();
+  }, [trackActivity, debouncedTitleValidation, titleError]);
 
   // Handle note deletion
   const handleDeleteNote = useCallback(async () => {
@@ -468,7 +501,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         onTitleChange={handleTitleChange}
         onDeleteNote={handleDeleteNote}
       />
-      
+
       <MarkdownEditorCore
         initialContent={note.content}
         isDarkMode={isDarkMode}
