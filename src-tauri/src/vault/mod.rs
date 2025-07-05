@@ -354,7 +354,7 @@ impl RateLimitState {
     fn record_failed_attempt(&mut self) {
         self.attempts += 1;
         self.last_attempt = Instant::now();
-        
+
         // Exponential backoff: 2^attempts seconds, capped at 1 hour
         let backoff_seconds = (2_u32.pow(self.attempts.min(12))).min(3600);
         self.locked_until = Some(Instant::now() + Duration::from_secs(backoff_seconds as u64));
@@ -400,10 +400,10 @@ impl VaultSession {
 type RateLimitMap = Arc<Mutex<HashMap<String, RateLimitState>>>;
 type SessionMap = Arc<Mutex<HashMap<String, VaultSession>>>;
 
-lazy_static::lazy_static! {
-    static ref RATE_LIMITS: RateLimitMap = Arc::new(Mutex::new(HashMap::new()));
-    static ref SESSIONS: SessionMap = Arc::new(Mutex::new(HashMap::new()));
-}
+use std::sync::LazyLock;
+
+static RATE_LIMITS: LazyLock<RateLimitMap> = LazyLock::new(|| Arc::new(Mutex::new(HashMap::new())));
+static SESSIONS: LazyLock<SessionMap> = LazyLock::new(|| Arc::new(Mutex::new(HashMap::new())));
 
 pub struct VaultManager {
     vault_path: PathBuf,
@@ -429,7 +429,7 @@ impl VaultManager {
     pub fn get_rate_limit_status(&self) -> (bool, Option<u64>) {
         let vault_key = self.vault_path.display().to_string();
         let rate_limits = RATE_LIMITS.lock().unwrap();
-        
+
         if let Some(state) = rate_limits.get(&vault_key) {
             if state.is_locked() {
                 let seconds_remaining = state.time_until_unlock()
@@ -458,7 +458,7 @@ impl VaultManager {
 
         // Create vault info
         let vault_info = VaultInfo::new(vault_name);
-        
+
         // Save vault info file
         let vault_info_file = self.vault_path.join(".cocobolo_vault");
         let vault_info_content = serde_json::to_string_pretty(&vault_info)?;
@@ -487,7 +487,7 @@ impl VaultManager {
 
         // Create encrypted vault info
         let vault_info = VaultInfo::new_encrypted(vault_name, vault_crypto);
-        
+
         // Save vault info file
         let vault_info_file = self.vault_path.join(".cocobolo_vault");
         let vault_info_content = serde_json::to_string_pretty(&vault_info)?;
@@ -504,7 +504,7 @@ impl VaultManager {
             "auto_save_interval": 300,
             "show_markdown_preview": true
         });
-        
+
         let settings_content = serde_json::to_string_pretty(&default_settings)?;
         std::fs::write(&settings_file, settings_content)?;
 
@@ -519,7 +519,7 @@ impl VaultManager {
         {
             let mut rate_limits = RATE_LIMITS.lock().unwrap();
             let state = rate_limits.entry(vault_key.clone()).or_insert_with(RateLimitState::new);
-            
+
             if state.is_locked() {
                 let seconds_remaining = state.time_until_unlock()
                     .map(|d| d.as_secs())
@@ -530,7 +530,7 @@ impl VaultManager {
 
         // Load and verify vault
         let vault_info = self.load_vault_info().map_err(|_| VaultError::VaultCorrupted)?;
-        
+
         if !vault_info.is_encrypted {
             return Err(VaultError::NotEncrypted(
                 "Vault is not encrypted".to_string()
@@ -542,7 +542,7 @@ impl VaultManager {
 
         // Verify password and derive key
         let verification_result = self.crypto_manager.verify_password(password, vault_crypto);
-        
+
         match verification_result {
             Ok(true) => {
                 // Password is correct - reset rate limiting and create session
@@ -561,7 +561,7 @@ impl VaultManager {
                 // Create session
                 let session_id = uuid::Uuid::new_v4().to_string();
                 let session = VaultSession::new(vault_info, encryption_key);
-                
+
                 {
                     let mut sessions = SESSIONS.lock().unwrap();
                     sessions.insert(session_id.clone(), session);
@@ -576,7 +576,7 @@ impl VaultManager {
                     let state = rate_limits.entry(vault_key).or_insert_with(RateLimitState::new);
                     state.record_failed_attempt();
                 }
-                
+
                 Err(VaultError::InvalidPassword)
             }
         }
@@ -585,7 +585,7 @@ impl VaultManager {
     /// Get session by ID
     pub fn get_session(session_id: &str) -> Option<VaultSession> {
         let mut sessions = SESSIONS.lock().unwrap();
-        
+
         if let Some(session) = sessions.get_mut(session_id) {
             // Check if session is expired (30 minutes timeout)
             if session.is_expired(Duration::from_secs(30 * 60)) {
@@ -615,7 +615,7 @@ impl VaultManager {
     /// Verify password for encrypted vault (legacy method)
     pub fn verify_vault_password(&self, password: &SecurePassword) -> Result<bool, VaultError> {
         let vault_info = self.load_vault_info()?;
-        
+
         if !vault_info.is_encrypted {
             return Err(VaultError::NotEncrypted(
                 "Vault is not encrypted".to_string()
@@ -639,7 +639,7 @@ impl VaultManager {
         let vault_info_file = self.vault_path.join(".cocobolo_vault");
         let vault_info_content = std::fs::read_to_string(&vault_info_file)
             .map_err(|_| VaultError::VaultCorrupted)?;
-        
+
         let vault_info: VaultInfo = serde_json::from_str(&vault_info_content)
             .map_err(|_| VaultError::VaultCorrupted)?;
 
@@ -698,7 +698,7 @@ impl VaultManager {
         // Save encrypted note file
         let note_filename = format!("{}.note", note.id);
         let note_file_path = self.vault_path.join("notes").join(&note_filename);
-        
+
         // Create note file with metadata
         let note_file_data = serde_json::json!({
             "nonce": base64::encode(&nonce),
@@ -706,7 +706,7 @@ impl VaultManager {
             "created_at": note.created_at,
             "updated_at": note.updated_at
         });
-        
+
         std::fs::write(&note_file_path, serde_json::to_string_pretty(&note_file_data)?)?;
 
         // Update notes index
@@ -720,7 +720,7 @@ impl VaultManager {
     /// Load notes index from vault
     pub fn load_notes_index(&self, encryption_key: &EncryptionKey) -> Result<NotesIndex, VaultError> {
         let index_file = self.vault_path.join(".cocobolo_notes_index");
-        
+
         if !index_file.exists() {
             // Create new index if it doesn't exist
             let index = NotesIndex::new();
@@ -730,7 +730,7 @@ impl VaultManager {
 
         // Read and decrypt index
         let index_content = std::fs::read_to_string(&index_file)?;
-        
+
         let index_data: serde_json::Value = serde_json::from_str(&index_content)?;
 
         let nonce_b64 = index_data["nonce"].as_str()
@@ -750,7 +750,7 @@ impl VaultManager {
         )?;
 
         let index: NotesIndex = serde_json::from_slice(&decrypted_content)?;
-        
+
         Ok(index)
     }
 
@@ -789,7 +789,7 @@ impl VaultManager {
     pub fn get_notes_list(&self, session_id: &str) -> Result<Vec<NoteMetadata>, VaultError> {
         let session = Self::get_session(session_id)
             .ok_or_else(|| VaultError::InvalidPassword)?;
-        
+
         let index = self.load_notes_index(&session.encryption_key)?;
         Ok(index.notes)
     }
@@ -907,7 +907,7 @@ impl VaultManager {
         // Save encrypted note file
         let note_filename = format!("{}.note", note.id);
         let note_file_path = self.vault_path.join("notes").join(&note_filename);
-        
+
         // Create note file with metadata
         let note_file_data = serde_json::json!({
             "nonce": base64::encode(&nonce),
@@ -915,7 +915,7 @@ impl VaultManager {
             "created_at": note.created_at,
             "updated_at": note.updated_at
         });
-        
+
         std::fs::write(&note_file_path, serde_json::to_string_pretty(&note_file_data)?)?;
 
         // Update notes index
@@ -978,7 +978,7 @@ impl VaultManager {
         // Encrypt and save the updated note
         let session = Self::get_session(session_id)
             .ok_or_else(|| VaultError::InvalidPassword)?;
-            
+
         let note_content = serde_json::to_string_pretty(&note)?;
         let (encrypted_content, nonce) = self.crypto_manager.encrypt_data(
             note_content.as_bytes(),
@@ -988,14 +988,14 @@ impl VaultManager {
         // Save encrypted note file
         let note_filename = format!("{}.note", note.id);
         let note_file_path = self.vault_path.join("notes").join(&note_filename);
-        
+
         let note_file_data = serde_json::json!({
             "nonce": base64::encode(&nonce),
             "encrypted_content": base64::encode(&encrypted_content),
             "created_at": note.created_at,
             "updated_at": note.updated_at
         });
-        
+
         std::fs::write(&note_file_path, serde_json::to_string_pretty(&note_file_data)?)?;
 
         // Update notes index with the updated note
@@ -1059,7 +1059,7 @@ mod tests {
     #[test]
     fn test_vault_info_creation() {
         let info = VaultInfo::new("Test Vault".to_string());
-        
+
         assert_eq!(info.name, "Test Vault");
         assert_eq!(info.version, "1.0.0");
         assert!(!info.is_encrypted);
@@ -1072,9 +1072,9 @@ mod tests {
         let crypto_manager = CryptoManager::new();
         let password = create_test_password();
         let vault_crypto = crypto_manager.create_vault_crypto(&password).unwrap();
-        
+
         let info = VaultInfo::new_encrypted("Test Vault".to_string(), vault_crypto);
-        
+
         assert_eq!(info.name, "Test Vault");
         assert_eq!(info.version, "1.0.0");
         assert!(info.is_encrypted);
@@ -1084,7 +1084,7 @@ mod tests {
     #[test]
     fn test_note_creation() {
         let note = Note::new("Test Note".to_string(), Some("Test content".to_string()));
-        
+
         assert_eq!(note.title, "Test Note");
         assert_eq!(note.content, "Test content");
         assert_eq!(note.note_type, "text");
@@ -1102,7 +1102,7 @@ mod tests {
             Some("{}".to_string()),
             "whiteboard".to_string()
         );
-        
+
         assert_eq!(note.title, "Whiteboard Note");
         assert_eq!(note.content, "{}");
         assert_eq!(note.note_type, "whiteboard");
@@ -1113,7 +1113,7 @@ mod tests {
         let note = Note::new("Test".to_string(), None)
             .with_tags(vec!["tag1".to_string(), "tag2".to_string()])
             .with_folder(Some("folder1".to_string()));
-        
+
         assert_eq!(note.tags, vec!["tag1", "tag2"]);
         assert_eq!(note.folder_path, Some("folder1".to_string()));
     }
@@ -1122,7 +1122,7 @@ mod tests {
     fn test_note_metadata_from_note() {
         let note = Note::new("Test Note".to_string(), Some("A".repeat(200)));
         let metadata = NoteMetadata::from(&note);
-        
+
         assert_eq!(metadata.id, note.id);
         assert_eq!(metadata.title, note.title);
         assert_eq!(metadata.note_type, note.note_type);
@@ -1138,7 +1138,7 @@ mod tests {
     fn test_note_metadata_short_content() {
         let note = Note::new("Test Note".to_string(), Some("Short content".to_string()));
         let metadata = NoteMetadata::from(&note);
-        
+
         assert_eq!(metadata.content_preview, "Short content");
         assert!(!metadata.content_preview.ends_with("..."));
     }
@@ -1146,7 +1146,7 @@ mod tests {
     #[test]
     fn test_folder_metadata_creation() {
         let folder = FolderMetadata::new("folder1/subfolder".to_string());
-        
+
         assert_eq!(folder.path, "folder1/subfolder");
         assert_eq!(folder.name, "subfolder");
         assert!(folder.created_at <= chrono::Utc::now());
@@ -1155,7 +1155,7 @@ mod tests {
     #[test]
     fn test_folder_metadata_root_folder() {
         let folder = FolderMetadata::new("root".to_string());
-        
+
         assert_eq!(folder.path, "root");
         assert_eq!(folder.name, "root");
     }
@@ -1163,7 +1163,7 @@ mod tests {
     #[test]
     fn test_notes_index_creation() {
         let index = NotesIndex::new();
-        
+
         assert!(index.notes.is_empty());
         assert!(index.folders.is_empty());
         assert!(index.last_updated <= chrono::Utc::now());
@@ -1173,9 +1173,9 @@ mod tests {
     fn test_notes_index_add_note() {
         let mut index = NotesIndex::new();
         let note = Note::new("Test".to_string(), None);
-        
+
         index.add_note(&note);
-        
+
         assert_eq!(index.notes.len(), 1);
         assert_eq!(index.notes[0].id, note.id);
         assert_eq!(index.notes[0].title, note.title);
@@ -1185,14 +1185,14 @@ mod tests {
     fn test_notes_index_update_note() {
         let mut index = NotesIndex::new();
         let mut note = Note::new("Test".to_string(), None);
-        
+
         index.add_note(&note);
-        
+
         note.title = "Updated Title".to_string();
         note.updated_at = chrono::Utc::now();
-        
+
         index.update_note(&note);
-        
+
         assert_eq!(index.notes.len(), 1);
         assert_eq!(index.notes[0].title, "Updated Title");
     }
@@ -1202,10 +1202,10 @@ mod tests {
         let mut index = NotesIndex::new();
         let note = Note::new("Test".to_string(), None);
         let note_id = note.id.clone();
-        
+
         index.add_note(&note);
         assert_eq!(index.notes.len(), 1);
-        
+
         index.remove_note(&note_id);
         assert_eq!(index.notes.len(), 0);
     }
@@ -1213,7 +1213,7 @@ mod tests {
     #[test]
     fn test_notes_index_add_folder() {
         let mut index = NotesIndex::new();
-        
+
         let result = index.add_folder("test_folder".to_string());
         assert!(result.is_ok());
         assert_eq!(index.folders.len(), 1);
@@ -1224,10 +1224,10 @@ mod tests {
     #[test]
     fn test_notes_index_add_duplicate_folder() {
         let mut index = NotesIndex::new();
-        
+
         index.add_folder("test_folder".to_string()).unwrap();
         let result = index.add_folder("test_folder".to_string());
-        
+
         assert!(result.is_err());
         assert_eq!(index.folders.len(), 1);
     }
@@ -1235,10 +1235,10 @@ mod tests {
     #[test]
     fn test_notes_index_remove_folder() {
         let mut index = NotesIndex::new();
-        
+
         index.add_folder("test_folder".to_string()).unwrap();
         assert_eq!(index.folders.len(), 1);
-        
+
         let result = index.remove_folder("test_folder");
         assert!(result.is_ok());
         assert_eq!(index.folders.len(), 0);
@@ -1249,10 +1249,10 @@ mod tests {
         let mut index = NotesIndex::new();
         let note = Note::new("Test".to_string(), None)
             .with_folder(Some("test_folder".to_string()));
-        
+
         index.add_folder("test_folder".to_string()).unwrap();
         index.add_note(&note);
-        
+
         let result = index.remove_folder("test_folder");
         assert!(result.is_err());
         assert_eq!(index.folders.len(), 1);
@@ -1263,9 +1263,9 @@ mod tests {
         let mut index = NotesIndex::new();
         let note = Note::new("Test".to_string(), None);
         let note_id = note.id.clone();
-        
+
         index.add_note(&note);
-        
+
         let result = index.move_note(&note_id, Some("new_folder".to_string()));
         assert!(result.is_ok());
         assert_eq!(index.notes[0].folder_path, Some("new_folder".to_string()));
@@ -1276,10 +1276,10 @@ mod tests {
         let mut index = NotesIndex::new();
         let note = Note::new("Test".to_string(), None)
             .with_folder(Some("old_folder".to_string()));
-        
+
         index.add_folder("old_folder".to_string()).unwrap();
         index.add_note(&note);
-        
+
         let result = index.move_folder("old_folder", "new_folder");
         assert!(result.is_ok());
         assert_eq!(index.folders[0].path, "new_folder");
@@ -1289,18 +1289,18 @@ mod tests {
     #[test]
     fn test_rate_limit_state() {
         let mut state = RateLimitState::new();
-        
+
         assert!(!state.is_locked());
         assert!(state.time_until_unlock().is_none());
-        
+
         // Record failed attempts
         for _ in 0..5 {
             state.record_failed_attempt();
         }
-        
+
         assert!(state.is_locked());
         assert!(state.time_until_unlock().is_some());
-        
+
         state.reset();
         assert!(!state.is_locked());
         assert!(state.time_until_unlock().is_none());
@@ -1310,9 +1310,9 @@ mod tests {
     fn test_vault_session_creation() {
         let vault_info = VaultInfo::new("Test".to_string());
         let key = EncryptionKey::from_bytes([42u8; 32]);
-        
+
         let session = VaultSession::new(vault_info.clone(), key);
-        
+
         assert_eq!(session.vault_info.name, vault_info.name);
         assert!(!session.is_expired(Duration::from_secs(3600)));
     }
@@ -1321,13 +1321,13 @@ mod tests {
     fn test_vault_session_expiry() {
         let vault_info = VaultInfo::new("Test".to_string());
         let key = EncryptionKey::from_bytes([42u8; 32]);
-        
+
         let mut session = VaultSession::new(vault_info, key);
-        
+
         // Manually set creation time to past
         session.created_at = Instant::now() - Duration::from_secs(7200);
         session.last_accessed = Instant::now() - Duration::from_secs(7200);
-        
+
         assert!(session.is_expired(Duration::from_secs(3600)));
     }
 
@@ -1335,7 +1335,7 @@ mod tests {
     fn test_vault_manager_creation() {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
-        
+
         assert_eq!(manager.vault_path(), temp_dir.path());
         assert!(!manager.vault_exists());
     }
@@ -1344,13 +1344,13 @@ mod tests {
     fn test_vault_manager_initialize_vault() {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
-        
+
         let vault_info = manager.initialize_vault("Test Vault".to_string()).unwrap();
-        
+
         assert_eq!(vault_info.name, "Test Vault");
         assert!(!vault_info.is_encrypted);
         assert!(manager.vault_exists());
-        
+
         // Verify vault structure
         assert!(temp_dir.path().join(".cocobolo_vault").exists());
         assert!(temp_dir.path().join("notes").exists());
@@ -1362,9 +1362,9 @@ mod tests {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
         let password = create_test_password();
-        
+
         let vault_info = manager.initialize_encrypted_vault("Test Vault".to_string(), &password).unwrap();
-        
+
         assert_eq!(vault_info.name, "Test Vault");
         assert!(vault_info.is_encrypted);
         assert!(vault_info.crypto.is_some());
@@ -1375,9 +1375,9 @@ mod tests {
     fn test_vault_manager_initialize_existing_vault() {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
-        
+
         manager.initialize_vault("Test Vault".to_string()).unwrap();
-        
+
         let result = manager.initialize_vault("Another Vault".to_string());
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), VaultError::VaultExists(_)));
@@ -1387,10 +1387,10 @@ mod tests {
     fn test_vault_manager_load_vault_info() {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
-        
+
         let original_info = manager.initialize_vault("Test Vault".to_string()).unwrap();
         let loaded_info = manager.load_vault_info().unwrap();
-        
+
         assert_eq!(loaded_info.name, original_info.name);
         assert_eq!(loaded_info.version, original_info.version);
         assert_eq!(loaded_info.is_encrypted, original_info.is_encrypted);
@@ -1400,7 +1400,7 @@ mod tests {
     fn test_vault_manager_load_vault_info_not_found() {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
-        
+
         let result = manager.load_vault_info();
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), VaultError::VaultNotFound(_)));
@@ -1412,19 +1412,19 @@ mod tests {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
         let password = create_test_password();
-        
+
         manager.initialize_encrypted_vault("Test Vault".to_string(), &password).unwrap();
-        
+
         let session_id = manager.unlock_vault(&password).unwrap();
         assert!(!session_id.is_empty());
-        
+
         // Verify session exists
         let session = VaultManager::get_session(&session_id);
         assert!(session.is_some());
-        
+
         // Close session
         assert!(VaultManager::close_session(&session_id));
-        
+
         // Verify session is closed
         let session = VaultManager::get_session(&session_id);
         assert!(session.is_none());
@@ -1437,9 +1437,9 @@ mod tests {
         let manager = create_test_vault_manager(&temp_dir);
         let correct_password = create_test_password();
         let wrong_password = SecurePassword::new("WrongPassword123!@#".to_string());
-        
+
         manager.initialize_encrypted_vault("Test Vault".to_string(), &correct_password).unwrap();
-        
+
         let result = manager.unlock_vault(&wrong_password);
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), VaultError::InvalidPassword));
@@ -1452,14 +1452,14 @@ mod tests {
         let manager = create_test_vault_manager(&temp_dir);
         let correct_password = create_test_password();
         let wrong_password = SecurePassword::new("WrongPassword123!@#".to_string());
-        
+
         manager.initialize_encrypted_vault("Test Vault".to_string(), &correct_password).unwrap();
-        
+
         // Make multiple failed attempts
         for _ in 0..5 {
             let _ = manager.unlock_vault(&wrong_password);
         }
-        
+
         let (is_rate_limited, seconds_remaining) = manager.get_rate_limit_status();
         assert!(is_rate_limited);
         assert!(seconds_remaining.is_some());
@@ -1472,11 +1472,11 @@ mod tests {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
         let password = create_test_password();
-        
+
         manager.initialize_encrypted_vault("Test Vault".to_string(), &password).unwrap();
-        
+
         assert!(manager.verify_vault_password(&password).unwrap());
-        
+
         let wrong_password = SecurePassword::new("WrongPassword123!@#".to_string());
         assert!(!manager.verify_vault_password(&wrong_password).unwrap());
     }
@@ -1487,10 +1487,10 @@ mod tests {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
         let password = create_test_password();
-        
+
         manager.initialize_encrypted_vault("Test Vault".to_string(), &password).unwrap();
         let session_id = manager.unlock_vault(&password).unwrap();
-        
+
         let note = manager.create_note(
             &session_id,
             Some("Test Note".to_string()),
@@ -1499,13 +1499,13 @@ mod tests {
             Some("folder1".to_string()),
             None
         ).unwrap();
-        
+
         assert_eq!(note.title, "Test Note");
         assert_eq!(note.content, "Test content");
         assert_eq!(note.tags, vec!["tag1"]);
         assert_eq!(note.folder_path, Some("folder1".to_string()));
         assert_eq!(note.note_type, "text");
-        
+
         VaultManager::close_session(&session_id);
     }
 
@@ -1514,7 +1514,7 @@ mod tests {
     fn test_vault_manager_create_note_invalid_session() {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
-        
+
         let result = manager.create_note(
             "invalid_session",
             Some("Test".to_string()),
@@ -1523,7 +1523,7 @@ mod tests {
             None,
             None
         );
-        
+
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), VaultError::InvalidPassword));
     }
@@ -1534,10 +1534,10 @@ mod tests {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
         let password = create_test_password();
-        
+
         manager.initialize_encrypted_vault("Test Vault".to_string(), &password).unwrap();
         let session_id = manager.unlock_vault(&password).unwrap();
-        
+
         // Create note
         let note = manager.create_note(
             &session_id,
@@ -1547,12 +1547,12 @@ mod tests {
             None,
             None
         ).unwrap();
-        
+
         // Load note
         let loaded_note = manager.load_note(&session_id, &note.id).unwrap();
         assert_eq!(loaded_note.title, "Test Note");
         assert_eq!(loaded_note.content, "Original content");
-        
+
         // Save note with changes
         let updated_note = manager.save_note(
             &session_id,
@@ -1562,12 +1562,12 @@ mod tests {
             Some(vec!["new_tag".to_string()]),
             Some("new_folder".to_string())
         ).unwrap();
-        
+
         assert_eq!(updated_note.title, "Updated Title");
         assert_eq!(updated_note.content, "Updated content");
         assert_eq!(updated_note.tags, vec!["new_tag"]);
         assert_eq!(updated_note.folder_path, Some("new_folder".to_string()));
-        
+
         VaultManager::close_session(&session_id);
     }
 
@@ -1577,10 +1577,10 @@ mod tests {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
         let password = create_test_password();
-        
+
         manager.initialize_encrypted_vault("Test Vault".to_string(), &password).unwrap();
         let session_id = manager.unlock_vault(&password).unwrap();
-        
+
         // Create multiple notes
         let note1 = manager.create_note(
             &session_id,
@@ -1590,7 +1590,7 @@ mod tests {
             None,
             None
         ).unwrap();
-        
+
         let note2 = manager.create_note(
             &session_id,
             Some("Note 2".to_string()),
@@ -1599,18 +1599,18 @@ mod tests {
             Some("folder1".to_string()),
             None
         ).unwrap();
-        
+
         let notes_list = manager.get_notes_list(&session_id).unwrap();
         assert_eq!(notes_list.len(), 2);
-        
+
         let note1_meta = notes_list.iter().find(|n| n.id == note1.id).unwrap();
         let note2_meta = notes_list.iter().find(|n| n.id == note2.id).unwrap();
-        
+
         assert_eq!(note1_meta.title, "Note 1");
         assert_eq!(note1_meta.folder_path, None);
         assert_eq!(note2_meta.title, "Note 2");
         assert_eq!(note2_meta.folder_path, Some("folder1".to_string()));
-        
+
         VaultManager::close_session(&session_id);
     }
 
@@ -1620,18 +1620,18 @@ mod tests {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
         let password = create_test_password();
-        
+
         manager.initialize_encrypted_vault("Test Vault".to_string(), &password).unwrap();
         let session_id = manager.unlock_vault(&password).unwrap();
-        
+
         // Create folder
         manager.create_folder(&session_id, "test_folder".to_string()).unwrap();
-        
+
         // Get folders list
         let folders = manager.get_folders_list(&session_id).unwrap();
         assert_eq!(folders.len(), 1);
         assert_eq!(folders[0], "test_folder");
-        
+
         // Create note in folder
         let note = manager.create_note(
             &session_id,
@@ -1641,21 +1641,21 @@ mod tests {
             Some("test_folder".to_string()),
             None
         ).unwrap();
-        
+
         // Move note to different folder
         manager.move_note(&session_id, &note.id, Some("new_folder".to_string())).unwrap();
-        
+
         // Verify note moved
         let loaded_note = manager.load_note(&session_id, &note.id).unwrap();
         assert_eq!(loaded_note.folder_path, Some("new_folder".to_string()));
-        
+
         // Move folder
         manager.move_folder(&session_id, "test_folder", "renamed_folder").unwrap();
-        
+
         let folders = manager.get_folders_list(&session_id).unwrap();
         assert!(folders.contains(&"renamed_folder".to_string()));
         assert!(!folders.contains(&"test_folder".to_string()));
-        
+
         VaultManager::close_session(&session_id);
     }
 
@@ -1665,10 +1665,10 @@ mod tests {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
         let password = create_test_password();
-        
+
         manager.initialize_encrypted_vault("Test Vault".to_string(), &password).unwrap();
         let session_id = manager.unlock_vault(&password).unwrap();
-        
+
         // Create note
         let note = manager.create_note(
             &session_id,
@@ -1678,23 +1678,23 @@ mod tests {
             None,
             None
         ).unwrap();
-        
+
         // Verify note exists
         let notes_list = manager.get_notes_list(&session_id).unwrap();
         assert_eq!(notes_list.len(), 1);
-        
+
         // Delete note
         manager.delete_note(&session_id, &note.id).unwrap();
-        
+
         // Verify note is deleted
         let notes_list = manager.get_notes_list(&session_id).unwrap();
         assert_eq!(notes_list.len(), 0);
-        
+
         // Verify note file is deleted
         let result = manager.load_note(&session_id, &note.id);
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), VaultError::NoteNotFound(_)));
-        
+
         VaultManager::close_session(&session_id);
     }
 
@@ -1704,24 +1704,24 @@ mod tests {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
         let password = create_test_password();
-        
+
         manager.initialize_encrypted_vault("Test Vault".to_string(), &password).unwrap();
         let session_id = manager.unlock_vault(&password).unwrap();
-        
+
         // Create folder
         manager.create_folder(&session_id, "test_folder".to_string()).unwrap();
-        
+
         // Verify folder exists
         let folders = manager.get_folders_list(&session_id).unwrap();
         assert_eq!(folders.len(), 1);
-        
+
         // Delete folder
         manager.delete_folder(&session_id, "test_folder").unwrap();
-        
+
         // Verify folder is deleted
         let folders = manager.get_folders_list(&session_id).unwrap();
         assert_eq!(folders.len(), 0);
-        
+
         VaultManager::close_session(&session_id);
     }
 
@@ -1731,16 +1731,16 @@ mod tests {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
         let password = create_test_password();
-        
+
         manager.initialize_encrypted_vault("Test Vault".to_string(), &password).unwrap();
         let session_id = manager.unlock_vault(&password).unwrap();
-        
+
         // Verify session exists
         assert!(VaultManager::get_session(&session_id).is_some());
-        
+
         // Wait for session to expire (this is a simplified test)
         // In real usage, sessions expire after 30 minutes of inactivity
-        
+
         // Manually expire session by accessing the session map
         // (This is a test-only approach)
         {
@@ -1750,7 +1750,7 @@ mod tests {
                 session.last_accessed = Instant::now() - Duration::from_secs(3600);
             }
         }
-        
+
         // Session should now be expired
         assert!(VaultManager::get_session(&session_id).is_none());
     }
@@ -1764,13 +1764,13 @@ mod tests {
     fn test_vault_error_display() {
         let error = VaultError::VaultNotFound("test_path".to_string());
         assert_eq!(error.to_string(), "Vault not found at path: test_path");
-        
+
         let error = VaultError::InvalidPassword;
         assert_eq!(error.to_string(), "Invalid password");
-        
+
         let error = VaultError::RateLimited(30);
         assert_eq!(error.to_string(), "Too many failed attempts. Try again in 30 seconds");
-        
+
         let error = VaultError::NoteNotFound("note_id".to_string());
         assert_eq!(error.to_string(), "Note not found: note_id");
     }
@@ -1778,10 +1778,10 @@ mod tests {
     #[test]
     fn test_vault_info_serialization() {
         let info = VaultInfo::new("Test Vault".to_string());
-        
+
         let serialized = serde_json::to_string(&info).unwrap();
         let deserialized: VaultInfo = serde_json::from_str(&serialized).unwrap();
-        
+
         assert_eq!(info.name, deserialized.name);
         assert_eq!(info.version, deserialized.version);
         assert_eq!(info.is_encrypted, deserialized.is_encrypted);
@@ -1792,10 +1792,10 @@ mod tests {
         let note = Note::new("Test".to_string(), Some("Content".to_string()))
             .with_tags(vec!["tag1".to_string()])
             .with_folder(Some("folder1".to_string()));
-        
+
         let serialized = serde_json::to_string(&note).unwrap();
         let deserialized: Note = serde_json::from_str(&serialized).unwrap();
-        
+
         assert_eq!(note.id, deserialized.id);
         assert_eq!(note.title, deserialized.title);
         assert_eq!(note.content, deserialized.content);
@@ -1808,13 +1808,13 @@ mod tests {
     fn test_notes_index_serialization() {
         let mut index = NotesIndex::new();
         let note = Note::new("Test".to_string(), None);
-        
+
         index.add_note(&note);
         index.add_folder("test_folder".to_string()).unwrap();
-        
+
         let serialized = serde_json::to_string(&index).unwrap();
         let deserialized: NotesIndex = serde_json::from_str(&serialized).unwrap();
-        
+
         assert_eq!(index.notes.len(), deserialized.notes.len());
         assert_eq!(index.folders.len(), deserialized.folders.len());
         assert_eq!(index.notes[0].id, deserialized.notes[0].id);
@@ -1826,7 +1826,7 @@ mod tests {
         let test_data = b"Hello, World!";
         let encoded = base64::encode(test_data);
         let decoded = base64::decode(&encoded).unwrap();
-        
+
         assert_eq!(test_data, decoded.as_slice());
     }
 
@@ -1837,19 +1837,19 @@ mod tests {
         let temp_dir = setup_temp_vault();
         let manager = create_test_vault_manager(&temp_dir);
         let password = create_test_password();
-        
+
         // Initialize encrypted vault
         let vault_info = manager.initialize_encrypted_vault("My Vault".to_string(), &password).unwrap();
         assert_eq!(vault_info.name, "My Vault");
         assert!(vault_info.is_encrypted);
-        
+
         // Unlock vault
         let session_id = manager.unlock_vault(&password).unwrap();
-        
+
         // Create folders
         manager.create_folder(&session_id, "work".to_string()).unwrap();
         manager.create_folder(&session_id, "personal".to_string()).unwrap();
-        
+
         // Create notes
         let work_note = manager.create_note(
             &session_id,
@@ -1859,7 +1859,7 @@ mod tests {
             Some("work".to_string()),
             None
         ).unwrap();
-        
+
         let personal_note = manager.create_note(
             &session_id,
             Some("Shopping List".to_string()),
@@ -1868,26 +1868,26 @@ mod tests {
             Some("personal".to_string()),
             None
         ).unwrap();
-        
+
         // Verify notes list
         let notes_list = manager.get_notes_list(&session_id).unwrap();
         assert_eq!(notes_list.len(), 2);
-        
+
         // Verify folders list
         let folders_list = manager.get_folders_list(&session_id).unwrap();
         assert_eq!(folders_list.len(), 2);
         assert!(folders_list.contains(&"work".to_string()));
         assert!(folders_list.contains(&"personal".to_string()));
-        
+
         // Load and verify notes
         let loaded_work_note = manager.load_note(&session_id, &work_note.id).unwrap();
         assert_eq!(loaded_work_note.title, "Project Plan");
         assert_eq!(loaded_work_note.folder_path, Some("work".to_string()));
-        
+
         let loaded_personal_note = manager.load_note(&session_id, &personal_note.id).unwrap();
         assert_eq!(loaded_personal_note.title, "Shopping List");
         assert_eq!(loaded_personal_note.folder_path, Some("personal".to_string()));
-        
+
         // Update a note
         let updated_note = manager.save_note(
             &session_id,
@@ -1897,35 +1897,35 @@ mod tests {
             Some(vec!["work".to_string(), "planning".to_string(), "updated".to_string()]),
             Some("work".to_string())
         ).unwrap();
-        
+
         assert_eq!(updated_note.title, "Updated Project Plan");
         assert_eq!(updated_note.tags.len(), 3);
         assert!(updated_note.tags.contains(&"updated".to_string()));
-        
+
         // Move a note
         manager.move_note(&session_id, &personal_note.id, Some("work".to_string())).unwrap();
         let moved_note = manager.load_note(&session_id, &personal_note.id).unwrap();
         assert_eq!(moved_note.folder_path, Some("work".to_string()));
-        
+
         // Delete a note
         manager.delete_note(&session_id, &personal_note.id).unwrap();
         let notes_list = manager.get_notes_list(&session_id).unwrap();
         assert_eq!(notes_list.len(), 1);
-        
+
         // Close session
         assert!(VaultManager::close_session(&session_id));
-        
+
         // Verify session is closed
         assert!(VaultManager::get_session(&session_id).is_none());
-        
+
         // Reopen vault
         let new_session_id = manager.unlock_vault(&password).unwrap();
-        
+
         // Verify data persisted
         let notes_list = manager.get_notes_list(&new_session_id).unwrap();
         assert_eq!(notes_list.len(), 1);
         assert_eq!(notes_list[0].title, "Updated Project Plan");
-        
+
         VaultManager::close_session(&new_session_id);
     }
 } 

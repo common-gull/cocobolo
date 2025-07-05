@@ -110,18 +110,18 @@ impl AppConfig {
         let home_dir = std::env::var("HOME")
             .or_else(|_| std::env::var("USERPROFILE"))
             .map_err(|_| ConfigError::ConfigDirAccess("Unable to determine home directory".to_string()))?;
-        
+
         let app_config_dir = PathBuf::from(home_dir).join(".config").join("cocobolo");
         std::fs::create_dir_all(&app_config_dir)
             .map_err(|e| ConfigError::ConfigDirAccess(format!("Failed to create config directory: {}", e)))?;
-        
+
         Ok(app_config_dir.join("config.json"))
     }
 
     /// Load configuration from file
     pub fn load() -> Result<Self, ConfigError> {
         let config_path = Self::config_file_path()?;
-        
+
         if !config_path.exists() {
             // Create default config if it doesn't exist
             let default_config = Self::default();
@@ -130,7 +130,7 @@ impl AppConfig {
         }
 
         let config_content = std::fs::read_to_string(&config_path)?;
-        
+
         // Try to parse the config, and if it fails due to missing fields, try migration
         let mut config: Self = match serde_json::from_str(&config_content) {
             Ok(config) => config,
@@ -140,10 +140,10 @@ impl AppConfig {
                 Self::migrate_old_config(&config_content)?
             }
         };
-        
+
         // Always attempt migration to handle any remaining old format fields
         config.migrate_from_old_format(&config_content)?;
-        
+
         Ok(config)
     }
 
@@ -152,23 +152,23 @@ impl AppConfig {
         // Try to parse as a generic JSON value first
         let old_config: serde_json::Value = serde_json::from_str(config_content)
             .map_err(|e| ConfigError::ParseError(e))?;
-        
+
         // Start with default config
         let mut new_config = Self::default();
-        
+
         // Migrate known fields
         if let Some(theme) = old_config.get("theme").and_then(|v| v.as_str()) {
             new_config.theme = theme.to_string();
         }
-        
+
         if let Some(auto_save_interval) = old_config.get("auto_save_interval").and_then(|v| v.as_u64()) {
             new_config.auto_save_interval = auto_save_interval;
         }
-        
+
         if let Some(show_markdown_preview) = old_config.get("show_markdown_preview").and_then(|v| v.as_bool()) {
             new_config.show_markdown_preview = show_markdown_preview;
         }
-        
+
         // Migrate old vault_location if it exists
         if let Some(vault_location) = old_config.get("vault_location").and_then(|v| v.as_str()) {
             let path = PathBuf::from(vault_location);
@@ -177,16 +177,16 @@ impl AppConfig {
                     .and_then(|n| n.to_str())
                     .unwrap_or("Migrated Vault")
                     .to_string();
-                
+
                 let known_vault = KnownVault::new(vault_name, path);
                 new_config.known_vaults.push(known_vault.clone());
                 new_config.current_vault_id = Some(known_vault.id);
             }
         }
-        
+
         // Save the migrated config
         new_config.save()?;
-        
+
         Ok(new_config)
     }
 
@@ -203,11 +203,11 @@ impl AppConfig {
                             .and_then(|n| n.to_str())
                             .unwrap_or("Migrated Vault")
                             .to_string();
-                        
+
                         let known_vault = KnownVault::new(vault_name, path);
                         self.known_vaults.push(known_vault.clone());
                         self.current_vault_id = Some(known_vault.id);
-                        
+
                         // Save the migrated config
                         self.save()?;
                     }
@@ -264,7 +264,7 @@ impl AppConfig {
         let known_vault = KnownVault::new(name, path);
         let vault_id = known_vault.id.clone();
         self.known_vaults.push(known_vault);
-        
+
         Ok(vault_id)
     }
 
@@ -272,17 +272,17 @@ impl AppConfig {
     pub fn remove_known_vault(&mut self, vault_id: &str) -> Result<(), ConfigError> {
         let index = self.known_vaults.iter().position(|v| v.id == vault_id)
             .ok_or_else(|| ConfigError::VaultNotFound(vault_id.to_string()))?;
-        
+
         self.known_vaults.remove(index);
-        
+
         // Clear current vault if it was the removed one
         if self.current_vault_id.as_ref() == Some(&vault_id.to_string()) {
             self.current_vault_id = None;
         }
-        
+
         // Remove from recent vaults
         self.recent_vault_ids.retain(|id| id != vault_id);
-        
+
         Ok(())
     }
 
@@ -308,16 +308,16 @@ impl AppConfig {
             if !self.known_vaults.iter().any(|v| v.id == *id) {
                 return Err(ConfigError::VaultNotFound(id.clone()));
             }
-            
+
             // Update last accessed time
             if let Some(vault) = self.get_known_vault_mut(id) {
                 vault.update_last_accessed();
             }
-            
+
             // Add to recent vaults
             self.add_to_recent_vaults(id.clone());
         }
-        
+
         self.current_vault_id = vault_id;
         Ok(())
     }
@@ -332,10 +332,10 @@ impl AppConfig {
     fn add_to_recent_vaults(&mut self, vault_id: String) {
         // Remove if already exists
         self.recent_vault_ids.retain(|id| *id != vault_id);
-        
+
         // Add to front
         self.recent_vault_ids.insert(0, vault_id);
-        
+
         // Trim to max size
         self.recent_vault_ids.truncate(self.max_recent_vaults);
     }
@@ -351,15 +351,15 @@ impl AppConfig {
     pub fn update_vault_metadata(&mut self, vault_id: &str, name: Option<String>, is_favorite: Option<bool>) -> Result<(), ConfigError> {
         let vault = self.get_known_vault_mut(vault_id)
             .ok_or_else(|| ConfigError::VaultNotFound(vault_id.to_string()))?;
-        
+
         if let Some(name) = name {
             vault.name = name;
         }
-        
+
         if let Some(is_favorite) = is_favorite {
             vault.is_favorite = is_favorite;
         }
-        
+
         Ok(())
     }
 
@@ -373,7 +373,7 @@ impl AppConfig {
     /// Clean up invalid vaults (paths that no longer exist)
     pub fn cleanup_invalid_vaults(&mut self) -> Vec<String> {
         let mut removed_ids = Vec::new();
-        
+
         self.known_vaults.retain(|vault| {
             if !vault.is_valid() {
                 removed_ids.push(vault.id.clone());
@@ -382,7 +382,7 @@ impl AppConfig {
                 true
             }
         });
-        
+
         // Clean up references to removed vaults
         for removed_id in &removed_ids {
             if self.current_vault_id.as_ref() == Some(removed_id) {
@@ -390,25 +390,11 @@ impl AppConfig {
             }
             self.recent_vault_ids.retain(|id| id != removed_id);
         }
-        
+
         removed_ids
     }
 
 
-    /// Get vault location (for backward compatibility)
-    #[deprecated(note = "Use get_current_vault instead")]
-    pub fn get_vault_location(&self) -> Option<&PathBuf> {
-        self.get_current_vault().map(|v| &v.path)
-    }
-
-    /// Check if vault location is configured and valid (for backward compatibility)
-    #[deprecated(note = "Use get_current_vault and check is_valid instead")]
-    #[allow(dead_code)]
-    pub fn is_vault_configured(&self) -> bool {
-        self.get_current_vault()
-            .map(|v| v.is_valid())
-            .unwrap_or(false)
-    }
 }
 
 #[cfg(test)]
@@ -450,7 +436,7 @@ mod tests {
         let temp_dir = setup_temp_config();
         let valid_path = temp_dir.path().join("valid_vault");
         let invalid_path = temp_dir.path().join("invalid_vault");
-        
+
         std::fs::create_dir_all(&valid_path).unwrap();
         // Don't create invalid_path
 
@@ -498,7 +484,7 @@ mod tests {
         setup_config_env(&temp_dir);
 
         let config = AppConfig::load().unwrap();
-        
+
         // Should create default config
         assert!(config.current_vault_id.is_none());
         assert!(config.known_vaults.is_empty());
@@ -521,7 +507,7 @@ mod tests {
 
         // Load config
         let loaded_config = AppConfig::load().unwrap();
-        
+
         assert_eq!(loaded_config.theme, "dark");
         assert_eq!(loaded_config.auto_save_interval, 600);
         assert!(!loaded_config.show_markdown_preview);
@@ -532,7 +518,7 @@ mod tests {
     fn test_add_known_vault() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
 
@@ -550,7 +536,7 @@ mod tests {
     fn test_add_known_vault_invalid_path() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let invalid_path = temp_dir.path().join("nonexistent");
         let mut config = AppConfig::default();
 
@@ -564,13 +550,13 @@ mod tests {
     fn test_add_known_vault_file_not_directory() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let file_path = temp_dir.path().join("test_file.txt");
         std::fs::write(&file_path, "test").unwrap();
 
         let mut config = AppConfig::default();
         let result = config.add_known_vault("Test".to_string(), file_path);
-        
+
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), ConfigError::InvalidVaultPath(_)));
     }
@@ -580,13 +566,13 @@ mod tests {
     fn test_add_known_vault_duplicate_path() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
 
         let mut config = AppConfig::default();
         config.add_known_vault("First".to_string(), vault_path.clone()).unwrap();
-        
+
         let result = config.add_known_vault("Second".to_string(), vault_path);
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), ConfigError::InvalidVaultPath(_)));
@@ -597,7 +583,7 @@ mod tests {
     fn test_add_known_vault_not_writable() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("readonly_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
 
@@ -611,12 +597,12 @@ mod tests {
 
             let mut config = AppConfig::default();
             let result = config.add_known_vault("Test".to_string(), vault_path.clone());
-            
+
             // Restore permissions for cleanup
             let mut perms = std::fs::metadata(&vault_path).unwrap().permissions();
             perms.set_mode(0o755);
             std::fs::set_permissions(&vault_path, perms).unwrap();
-            
+
             assert!(result.is_err());
             assert!(matches!(result.unwrap_err(), ConfigError::InvalidVaultPath(_)));
         }
@@ -627,15 +613,15 @@ mod tests {
     fn test_remove_known_vault() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
 
         let mut config = AppConfig::default();
         let vault_id = config.add_known_vault("Test".to_string(), vault_path).unwrap();
-        
+
         assert_eq!(config.known_vaults.len(), 1);
-        
+
         config.remove_known_vault(&vault_id).unwrap();
         assert_eq!(config.known_vaults.len(), 0);
     }
@@ -645,7 +631,7 @@ mod tests {
     fn test_remove_known_vault_not_found() {
         let mut config = AppConfig::default();
         let result = config.remove_known_vault("nonexistent_id");
-        
+
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), ConfigError::VaultNotFound(_)));
     }
@@ -655,16 +641,16 @@ mod tests {
     fn test_remove_known_vault_clears_current() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
 
         let mut config = AppConfig::default();
         let vault_id = config.add_known_vault("Test".to_string(), vault_path).unwrap();
         config.set_current_vault(Some(vault_id.clone())).unwrap();
-        
+
         assert_eq!(config.current_vault_id, Some(vault_id.clone()));
-        
+
         config.remove_known_vault(&vault_id).unwrap();
         assert!(config.current_vault_id.is_none());
     }
@@ -674,17 +660,17 @@ mod tests {
     fn test_get_known_vault() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
 
         let mut config = AppConfig::default();
         let vault_id = config.add_known_vault("Test".to_string(), vault_path.clone()).unwrap();
-        
+
         let vault = config.get_known_vault(&vault_id).unwrap();
         assert_eq!(vault.name, "Test");
         assert_eq!(vault.path, vault_path);
-        
+
         assert!(config.get_known_vault("nonexistent").is_none());
     }
 
@@ -693,18 +679,18 @@ mod tests {
     fn test_get_known_vault_mut() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
 
         let mut config = AppConfig::default();
         let vault_id = config.add_known_vault("Test".to_string(), vault_path).unwrap();
-        
+
         {
             let vault = config.get_known_vault_mut(&vault_id).unwrap();
             vault.name = "Modified Test".to_string();
         }
-        
+
         let vault = config.get_known_vault(&vault_id).unwrap();
         assert_eq!(vault.name, "Modified Test");
     }
@@ -714,20 +700,20 @@ mod tests {
     fn test_set_current_vault() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
 
         let mut config = AppConfig::default();
         let vault_id = config.add_known_vault("Test".to_string(), vault_path).unwrap();
-        
+
         config.set_current_vault(Some(vault_id.clone())).unwrap();
         assert_eq!(config.current_vault_id, Some(vault_id.clone()));
-        
+
         // Should update last accessed
         let vault = config.get_known_vault(&vault_id).unwrap();
         assert!(vault.last_accessed.is_some());
-        
+
         // Should add to recent vaults
         assert!(config.recent_vault_ids.contains(&vault_id));
     }
@@ -737,7 +723,7 @@ mod tests {
     fn test_set_current_vault_nonexistent() {
         let mut config = AppConfig::default();
         let result = config.set_current_vault(Some("nonexistent".to_string()));
-        
+
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), ConfigError::VaultNotFound(_)));
     }
@@ -747,14 +733,14 @@ mod tests {
     fn test_set_current_vault_none() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
 
         let mut config = AppConfig::default();
         let vault_id = config.add_known_vault("Test".to_string(), vault_path).unwrap();
         config.set_current_vault(Some(vault_id)).unwrap();
-        
+
         config.set_current_vault(None).unwrap();
         assert!(config.current_vault_id.is_none());
     }
@@ -764,15 +750,15 @@ mod tests {
     fn test_get_current_vault() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
 
         let mut config = AppConfig::default();
         let vault_id = config.add_known_vault("Test".to_string(), vault_path.clone()).unwrap();
-        
+
         assert!(config.get_current_vault().is_none());
-        
+
         config.set_current_vault(Some(vault_id)).unwrap();
         let current_vault = config.get_current_vault().unwrap();
         assert_eq!(current_vault.name, "Test");
@@ -784,10 +770,10 @@ mod tests {
     fn test_recent_vaults_management() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let mut config = AppConfig::default();
         config.max_recent_vaults = 3;
-        
+
         // Add multiple vaults
         let mut vault_ids = Vec::new();
         for i in 0..5 {
@@ -796,12 +782,12 @@ mod tests {
             let vault_id = config.add_known_vault(format!("Vault {}", i), vault_path).unwrap();
             vault_ids.push(vault_id);
         }
-        
+
         // Set them as current in order
         for vault_id in &vault_ids {
             config.set_current_vault(Some(vault_id.clone())).unwrap();
         }
-        
+
         // Should only keep the last 3 in recent
         assert_eq!(config.recent_vault_ids.len(), 3);
         assert!(config.recent_vault_ids.contains(&vault_ids[4]));
@@ -816,21 +802,21 @@ mod tests {
     fn test_get_recent_vaults() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let mut config = AppConfig::default();
-        
+
         // Add vaults
         let vault_path1 = temp_dir.path().join("vault1");
         let vault_path2 = temp_dir.path().join("vault2");
         std::fs::create_dir_all(&vault_path1).unwrap();
         std::fs::create_dir_all(&vault_path2).unwrap();
-        
+
         let vault_id1 = config.add_known_vault("Vault 1".to_string(), vault_path1).unwrap();
         let vault_id2 = config.add_known_vault("Vault 2".to_string(), vault_path2).unwrap();
-        
+
         config.set_current_vault(Some(vault_id1.clone())).unwrap();
         config.set_current_vault(Some(vault_id2.clone())).unwrap();
-        
+
         let recent_vaults = config.get_recent_vaults();
         assert_eq!(recent_vaults.len(), 2);
         assert_eq!(recent_vaults[0].id, vault_id2); // Most recent first
@@ -842,19 +828,19 @@ mod tests {
     fn test_update_vault_metadata() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
 
         let mut config = AppConfig::default();
         let vault_id = config.add_known_vault("Test".to_string(), vault_path).unwrap();
-        
+
         config.update_vault_metadata(
             &vault_id,
             Some("Updated Name".to_string()),
             Some(true)
         ).unwrap();
-        
+
         let vault = config.get_known_vault(&vault_id).unwrap();
         assert_eq!(vault.name, "Updated Name");
         assert!(vault.is_favorite);
@@ -865,23 +851,23 @@ mod tests {
     fn test_update_vault_metadata_partial() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let vault_path = temp_dir.path().join("test_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
 
         let mut config = AppConfig::default();
         let vault_id = config.add_known_vault("Test".to_string(), vault_path).unwrap();
-        
+
         // Update only name
         config.update_vault_metadata(&vault_id, Some("New Name".to_string()), None).unwrap();
-        
+
         let vault = config.get_known_vault(&vault_id).unwrap();
         assert_eq!(vault.name, "New Name");
         assert!(!vault.is_favorite); // Should remain unchanged
-        
+
         // Update only favorite status
         config.update_vault_metadata(&vault_id, None, Some(true)).unwrap();
-        
+
         let vault = config.get_known_vault(&vault_id).unwrap();
         assert_eq!(vault.name, "New Name"); // Should remain unchanged
         assert!(vault.is_favorite);
@@ -892,9 +878,9 @@ mod tests {
     fn test_get_favorite_vaults() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let mut config = AppConfig::default();
-        
+
         // Add multiple vaults
         let vault_path1 = temp_dir.path().join("vault1");
         let vault_path2 = temp_dir.path().join("vault2");
@@ -902,15 +888,15 @@ mod tests {
         std::fs::create_dir_all(&vault_path1).unwrap();
         std::fs::create_dir_all(&vault_path2).unwrap();
         std::fs::create_dir_all(&vault_path3).unwrap();
-        
+
         let vault_id1 = config.add_known_vault("Vault 1".to_string(), vault_path1).unwrap();
         let vault_id2 = config.add_known_vault("Vault 2".to_string(), vault_path2).unwrap();
         let vault_id3 = config.add_known_vault("Vault 3".to_string(), vault_path3).unwrap();
-        
+
         // Mark some as favorites
         config.update_vault_metadata(&vault_id1, None, Some(true)).unwrap();
         config.update_vault_metadata(&vault_id3, None, Some(true)).unwrap();
-        
+
         let favorite_vaults = config.get_favorite_vaults();
         assert_eq!(favorite_vaults.len(), 2);
         assert!(favorite_vaults.iter().any(|v| v.id == vault_id1));
@@ -923,31 +909,31 @@ mod tests {
     fn test_cleanup_invalid_vaults() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let mut config = AppConfig::default();
-        
+
         // Add valid vault
         let valid_path = temp_dir.path().join("valid_vault");
         std::fs::create_dir_all(&valid_path).unwrap();
         let valid_id = config.add_known_vault("Valid".to_string(), valid_path).unwrap();
-        
+
         // Add invalid vault - create it first so it passes validation
         let invalid_path = temp_dir.path().join("invalid_vault");
         std::fs::create_dir_all(&invalid_path).unwrap();
         let invalid_id = config.add_known_vault("Invalid".to_string(), invalid_path.clone()).unwrap();
-        
+
         // Manually remove the directory to simulate it becoming invalid
         std::fs::remove_dir_all(&invalid_path).ok();
-        
+
         // Set invalid vault as current and add to recent
         config.set_current_vault(Some(invalid_id.clone())).unwrap();
-        
+
         assert_eq!(config.known_vaults.len(), 2);
         assert_eq!(config.current_vault_id, Some(invalid_id.clone()));
         assert!(config.recent_vault_ids.contains(&invalid_id));
-        
+
         let removed_ids = config.cleanup_invalid_vaults();
-        
+
         assert_eq!(removed_ids.len(), 1);
         assert_eq!(removed_ids[0], invalid_id);
         assert_eq!(config.known_vaults.len(), 1);
@@ -961,25 +947,25 @@ mod tests {
     fn test_migrate_old_config() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         // Create old format config
         let vault_path = temp_dir.path().join("old_vault");
         std::fs::create_dir_all(&vault_path).unwrap();
-        
+
         let old_config = serde_json::json!({
             "vault_location": vault_path.to_str().unwrap(),
             "theme": "dark",
             "auto_save_interval": 600,
             "show_markdown_preview": false
         });
-        
+
         let config_path = temp_dir.path().join(".config").join("cocobolo").join("config.json");
         std::fs::create_dir_all(config_path.parent().unwrap()).unwrap();
         std::fs::write(&config_path, old_config.to_string()).unwrap();
-        
+
         // Load config should migrate automatically
         let config = AppConfig::load().unwrap();
-        
+
         assert_eq!(config.theme, "dark");
         assert_eq!(config.auto_save_interval, 600);
         assert!(!config.show_markdown_preview);
@@ -993,10 +979,10 @@ mod tests {
     fn test_config_file_path() {
         let temp_dir = setup_temp_config();
         setup_config_env(&temp_dir);
-        
+
         let config_path = AppConfig::config_file_path().unwrap();
         let expected_path = temp_dir.path().join(".config").join("cocobolo").join("config.json");
-        
+
         assert_eq!(config_path, expected_path);
         assert!(config_path.parent().unwrap().exists());
     }
@@ -1006,40 +992,12 @@ mod tests {
     fn test_config_file_path_no_home() {
         env::remove_var("HOME");
         env::remove_var("USERPROFILE");
-        
+
         let result = AppConfig::config_file_path();
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), ConfigError::ConfigDirAccess(_)));
     }
 
-    #[test]
-    #[serial]
-    fn test_legacy_vault_location_methods() {
-        let temp_dir = setup_temp_config();
-        setup_config_env(&temp_dir);
-        
-        let vault_path = temp_dir.path().join("test_vault");
-        std::fs::create_dir_all(&vault_path).unwrap();
-
-        let mut config = AppConfig::default();
-        let vault_id = config.add_known_vault("Test".to_string(), vault_path.clone()).unwrap();
-        config.set_current_vault(Some(vault_id)).unwrap();
-        
-        #[allow(deprecated)]
-        let legacy_path = config.get_vault_location();
-        assert_eq!(legacy_path, Some(&vault_path));
-        
-        #[allow(deprecated)]
-        assert!(config.is_vault_configured());
-        
-        config.set_current_vault(None).unwrap();
-        
-        #[allow(deprecated)]
-        assert!(config.get_vault_location().is_none());
-        
-        #[allow(deprecated)]
-        assert!(!config.is_vault_configured());
-    }
 
     #[test]
     fn test_default_max_recent_vaults() {
@@ -1050,10 +1008,10 @@ mod tests {
     fn test_config_error_display() {
         let error = ConfigError::ConfigDirAccess("test error".to_string());
         assert_eq!(error.to_string(), "Failed to access config directory: test error");
-        
+
         let error = ConfigError::InvalidVaultPath("test path".to_string());
         assert_eq!(error.to_string(), "Invalid vault path: test path");
-        
+
         let error = ConfigError::VaultNotFound("test_id".to_string());
         assert_eq!(error.to_string(), "Vault not found: test_id");
     }
@@ -1068,11 +1026,11 @@ mod tests {
         config.theme = "dark".to_string();
         let vault_id = config.add_known_vault("Test".to_string(), vault_path).unwrap();
         config.set_current_vault(Some(vault_id)).unwrap();
-        
+
         // Serialize and deserialize
         let serialized = serde_json::to_string(&config).unwrap();
         let deserialized: AppConfig = serde_json::from_str(&serialized).unwrap();
-        
+
         assert_eq!(config.theme, deserialized.theme);
         assert_eq!(config.current_vault_id, deserialized.current_vault_id);
         assert_eq!(config.known_vaults.len(), deserialized.known_vaults.len());
