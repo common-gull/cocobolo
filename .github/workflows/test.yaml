@@ -108,7 +108,7 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Run fmt
-        run: cd src-tauri && cargo fmt
+        run: cd src-tauri && cargo fmt --all -- --check
 
       - name: Run Rust tests
         run: cd src-tauri && cargo test
