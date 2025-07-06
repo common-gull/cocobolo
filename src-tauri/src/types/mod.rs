@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::vault::{Note, VaultInfo};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AppInfo {

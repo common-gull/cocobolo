@@ -172,4 +172,3 @@ pub enum ValidationError {
     #[error("Invalid session ID")]
     InvalidSessionId,
 }
-
