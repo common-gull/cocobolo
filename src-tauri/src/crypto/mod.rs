@@ -119,10 +119,10 @@ pub struct Argon2Params {
 impl Default for Argon2Params {
     fn default() -> Self {
         Self {
-            memory: 65536,     // 64 MB
-            iterations: 3,     // 3 iterations
-            parallelism: 4,    // 4 parallel threads
-            version: 0x13,     // Version 1.3
+            memory: 65536,  // 64 MB
+            iterations: 3,  // 3 iterations
+            parallelism: 4, // 4 parallel threads
+            version: 0x13,  // Version 1.3
         }
     }
 }
@@ -168,7 +168,7 @@ impl CryptoManager {
     pub fn new() -> Self {
         let params = Params::new(65536, 3, 4, None).unwrap();
         let argon2 = Argon2::new(argon2::Algorithm::Argon2id, Version::V0x13, params);
-        
+
         Self {
             argon2,
             requirements: PasswordRequirements::default(),
@@ -183,7 +183,10 @@ impl CryptoManager {
 
         // Check length
         if password.len() < self.requirements.min_length {
-            issues.push(format!("Password must be at least {} characters long", self.requirements.min_length));
+            issues.push(format!(
+                "Password must be at least {} characters long",
+                self.requirements.min_length
+            ));
             suggestions.push("Use a longer password for better security".to_string());
         } else {
             score += 1;
@@ -213,7 +216,8 @@ impl CryptoManager {
             score += 1;
         }
 
-        if self.requirements.require_symbols && !password_str.chars().any(|c| !c.is_alphanumeric()) {
+        if self.requirements.require_symbols && !password_str.chars().any(|c| !c.is_alphanumeric())
+        {
             issues.push("Password must contain at least one symbol".to_string());
             suggestions.push("Add symbols (!@#$%^&*)".to_string());
         } else if self.requirements.require_symbols {
@@ -226,10 +230,11 @@ impl CryptoManager {
         }
 
         let is_valid = issues.is_empty();
-        
+
         if is_valid && suggestions.is_empty() {
             match score {
-                0..=2 => suggestions.push("Consider using a longer password with more variety".to_string()),
+                0..=2 => suggestions
+                    .push("Consider using a longer password with more variety".to_string()),
                 3 => suggestions.push("Good password! Consider making it even longer".to_string()),
                 4 => suggestions.push("Strong password!".to_string()),
                 _ => suggestions.push("Excellent password!".to_string()),
@@ -245,12 +250,16 @@ impl CryptoManager {
     }
 
     /// Create vault encryption metadata from password
-    pub fn create_vault_crypto(&self, password: &SecurePassword) -> Result<VaultCrypto, CryptoError> {
+    pub fn create_vault_crypto(
+        &self,
+        password: &SecurePassword,
+    ) -> Result<VaultCrypto, CryptoError> {
         // Generate random salt
         let salt = SaltString::generate(&mut OsRng);
-        
+
         // Hash password for verification
-        let password_hash = self.argon2
+        let password_hash = self
+            .argon2
             .hash_password(password.as_bytes(), &salt)?
             .to_string();
 
@@ -261,7 +270,7 @@ impl CryptoManager {
         let test_plaintext = b"cocobolo_key_test_vector_2024";
         let cipher = ChaCha20Poly1305::new_from_slice(encryption_key.as_bytes())
             .map_err(|e| CryptoError::Encryption(e.to_string()))?;
-        
+
         let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
         let ciphertext = cipher
             .encrypt(&nonce, test_plaintext.as_ref())
@@ -277,12 +286,19 @@ impl CryptoManager {
     }
 
     /// Verify password against vault crypto metadata
-    pub fn verify_password(&self, password: &SecurePassword, vault_crypto: &VaultCrypto) -> Result<bool, CryptoError> {
+    pub fn verify_password(
+        &self,
+        password: &SecurePassword,
+        vault_crypto: &VaultCrypto,
+    ) -> Result<bool, CryptoError> {
         // Parse stored password hash
         let parsed_hash = PasswordHash::new(&vault_crypto.password_hash)?;
-        
+
         // Verify password
-        match self.argon2.verify_password(password.as_bytes(), &parsed_hash) {
+        match self
+            .argon2
+            .verify_password(password.as_bytes(), &parsed_hash)
+        {
             Ok(()) => {
                 // Additional verification: try to decrypt test vector
                 self.verify_key_test_vector(password, vault_crypto)
@@ -292,7 +308,11 @@ impl CryptoManager {
     }
 
     /// Derive encryption key from password and salt
-    pub fn derive_key(&self, password: &SecurePassword, salt: &SaltString) -> Result<EncryptionKey, CryptoError> {
+    pub fn derive_key(
+        &self,
+        password: &SecurePassword,
+        salt: &SaltString,
+    ) -> Result<EncryptionKey, CryptoError> {
         let mut key = [0u8; 32];
         self.argon2
             .hash_password_into(password.as_bytes(), salt.as_str().as_bytes(), &mut key)?;
@@ -300,7 +320,11 @@ impl CryptoManager {
     }
 
     /// Verify that derived key can decrypt test vector
-    fn verify_key_test_vector(&self, password: &SecurePassword, vault_crypto: &VaultCrypto) -> Result<bool, CryptoError> {
+    fn verify_key_test_vector(
+        &self,
+        password: &SecurePassword,
+        vault_crypto: &VaultCrypto,
+    ) -> Result<bool, CryptoError> {
         // Parse salt
         let salt = SaltString::from_b64(&vault_crypto.salt)
             .map_err(|e| CryptoError::PasswordHash(e.to_string()))?;
@@ -334,10 +358,14 @@ impl CryptoManager {
     }
 
     /// Encrypt data with derived key
-    pub fn encrypt_data(&self, data: &[u8], key: &EncryptionKey) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
+    pub fn encrypt_data(
+        &self,
+        data: &[u8],
+        key: &EncryptionKey,
+    ) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
         let cipher = ChaCha20Poly1305::new_from_slice(key.as_bytes())
             .map_err(|e| CryptoError::Encryption(e.to_string()))?;
-        
+
         let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
         let ciphertext = cipher
             .encrypt(&nonce, data)
@@ -347,14 +375,19 @@ impl CryptoManager {
     }
 
     /// Decrypt data with derived key
-    pub fn decrypt_data(&self, ciphertext: &[u8], nonce: &[u8], key: &EncryptionKey) -> Result<Vec<u8>, CryptoError> {
+    pub fn decrypt_data(
+        &self,
+        ciphertext: &[u8],
+        nonce: &[u8],
+        key: &EncryptionKey,
+    ) -> Result<Vec<u8>, CryptoError> {
         if nonce.len() != 12 {
             return Err(CryptoError::InvalidNonceLength);
         }
 
         let cipher = ChaCha20Poly1305::new_from_slice(key.as_bytes())
             .map_err(|e| CryptoError::Decryption(e.to_string()))?;
-        
+
         let nonce = Nonce::from_slice(nonce);
         let plaintext = cipher
             .decrypt(nonce, ciphertext)
@@ -394,7 +427,7 @@ mod tests {
     fn test_secure_password_creation() {
         let password = "test_password_123";
         let secure_password = SecurePassword::new(password.to_string());
-        
+
         assert_eq!(secure_password.as_bytes(), password.as_bytes());
         assert_eq!(secure_password.len(), password.len());
     }
@@ -403,7 +436,7 @@ mod tests {
     fn test_secure_password_debug_redaction() {
         let secure_password = SecurePassword::new("secret123".to_string());
         let debug_output = format!("{:?}", secure_password);
-        
+
         assert!(debug_output.contains("[REDACTED]"));
         assert!(!debug_output.contains("secret123"));
     }
@@ -412,7 +445,7 @@ mod tests {
     fn test_encryption_key_creation() {
         let key_bytes = [42u8; 32];
         let encryption_key = EncryptionKey::from_bytes(key_bytes);
-        
+
         assert_eq!(encryption_key.as_bytes(), &key_bytes);
     }
 
@@ -421,7 +454,7 @@ mod tests {
         let key_bytes = [42u8; 32];
         let encryption_key = EncryptionKey::from_bytes(key_bytes);
         let debug_output = format!("{:?}", encryption_key);
-        
+
         assert!(debug_output.contains("[REDACTED]"));
         assert!(!debug_output.contains("42"));
     }
@@ -430,9 +463,9 @@ mod tests {
     fn test_password_strength_validation_strong() {
         let crypto_manager = CryptoManager::new();
         let strong_password = SecurePassword::new("StrongPassword123!@#".to_string());
-        
+
         let strength = crypto_manager.validate_password_strength(&strong_password);
-        
+
         assert!(strength.is_valid);
         assert!(strength.score >= 4);
         assert!(strength.issues.is_empty());
@@ -442,9 +475,9 @@ mod tests {
     fn test_password_strength_validation_weak() {
         let crypto_manager = CryptoManager::new();
         let weak_password = SecurePassword::new("weak".to_string());
-        
+
         let strength = crypto_manager.validate_password_strength(&weak_password);
-        
+
         assert!(!strength.is_valid);
         assert!(strength.score < 4);
         assert!(!strength.issues.is_empty());
@@ -454,25 +487,31 @@ mod tests {
     #[test]
     fn test_password_strength_validation_missing_requirements() {
         let crypto_manager = CryptoManager::new();
-        
+
         // Test missing uppercase
         let no_uppercase = SecurePassword::new("lowercase123!@#".to_string());
         let strength = crypto_manager.validate_password_strength(&no_uppercase);
         assert!(!strength.is_valid);
-        assert!(strength.issues.iter().any(|issue| issue.contains("uppercase")));
-        
+        assert!(strength
+            .issues
+            .iter()
+            .any(|issue| issue.contains("uppercase")));
+
         // Test missing lowercase
         let no_lowercase = SecurePassword::new("UPPERCASE123!@#".to_string());
         let strength = crypto_manager.validate_password_strength(&no_lowercase);
         assert!(!strength.is_valid);
-        assert!(strength.issues.iter().any(|issue| issue.contains("lowercase")));
-        
+        assert!(strength
+            .issues
+            .iter()
+            .any(|issue| issue.contains("lowercase")));
+
         // Test missing numbers
         let no_numbers = SecurePassword::new("Password!@#".to_string());
         let strength = crypto_manager.validate_password_strength(&no_numbers);
         assert!(!strength.is_valid);
         assert!(strength.issues.iter().any(|issue| issue.contains("number")));
-        
+
         // Test missing symbols
         let no_symbols = SecurePassword::new("Password123".to_string());
         let strength = crypto_manager.validate_password_strength(&no_symbols);
@@ -484,9 +523,9 @@ mod tests {
     fn test_vault_crypto_creation() {
         let crypto_manager = CryptoManager::new();
         let password = SecurePassword::new("TestPassword123!@#".to_string());
-        
+
         let vault_crypto = crypto_manager.create_vault_crypto(&password).unwrap();
-        
+
         assert!(!vault_crypto.password_hash.is_empty());
         assert!(!vault_crypto.salt.is_empty());
         assert!(!vault_crypto.key_test_vector.is_empty());
@@ -500,10 +539,12 @@ mod tests {
     fn test_password_verification_correct() {
         let crypto_manager = CryptoManager::new();
         let password = SecurePassword::new("TestPassword123!@#".to_string());
-        
+
         let vault_crypto = crypto_manager.create_vault_crypto(&password).unwrap();
-        let is_valid = crypto_manager.verify_password(&password, &vault_crypto).unwrap();
-        
+        let is_valid = crypto_manager
+            .verify_password(&password, &vault_crypto)
+            .unwrap();
+
         assert!(is_valid);
     }
 
@@ -512,10 +553,14 @@ mod tests {
         let crypto_manager = CryptoManager::new();
         let correct_password = SecurePassword::new("TestPassword123!@#".to_string());
         let wrong_password = SecurePassword::new("WrongPassword123!@#".to_string());
-        
-        let vault_crypto = crypto_manager.create_vault_crypto(&correct_password).unwrap();
-        let is_valid = crypto_manager.verify_password(&wrong_password, &vault_crypto).unwrap();
-        
+
+        let vault_crypto = crypto_manager
+            .create_vault_crypto(&correct_password)
+            .unwrap();
+        let is_valid = crypto_manager
+            .verify_password(&wrong_password, &vault_crypto)
+            .unwrap();
+
         assert!(!is_valid);
     }
 
@@ -524,10 +569,10 @@ mod tests {
         let crypto_manager = CryptoManager::new();
         let password = SecurePassword::new("TestPassword123!@#".to_string());
         let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
-        
+
         let key1 = crypto_manager.derive_key(&password, &salt).unwrap();
         let key2 = crypto_manager.derive_key(&password, &salt).unwrap();
-        
+
         assert_eq!(key1.as_bytes(), key2.as_bytes());
     }
 
@@ -537,10 +582,10 @@ mod tests {
         let password = SecurePassword::new("TestPassword123!@#".to_string());
         let salt1 = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
         let salt2 = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
-        
+
         let key1 = crypto_manager.derive_key(&password, &salt1).unwrap();
         let key2 = crypto_manager.derive_key(&password, &salt2).unwrap();
-        
+
         assert_ne!(key1.as_bytes(), key2.as_bytes());
     }
 
@@ -550,11 +595,13 @@ mod tests {
         let password = SecurePassword::new("TestPassword123!@#".to_string());
         let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
         let key = crypto_manager.derive_key(&password, &salt).unwrap();
-        
+
         let plaintext = b"Hello, World! This is a test message.";
         let (ciphertext, nonce) = crypto_manager.encrypt_data(plaintext, &key).unwrap();
-        let decrypted = crypto_manager.decrypt_data(&ciphertext, &nonce, &key).unwrap();
-        
+        let decrypted = crypto_manager
+            .decrypt_data(&ciphertext, &nonce, &key)
+            .unwrap();
+
         assert_eq!(plaintext, decrypted.as_slice());
     }
 
@@ -564,11 +611,11 @@ mod tests {
         let password = SecurePassword::new("TestPassword123!@#".to_string());
         let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
         let key = crypto_manager.derive_key(&password, &salt).unwrap();
-        
+
         let plaintext = b"Hello, World!";
         let (ciphertext1, nonce1) = crypto_manager.encrypt_data(plaintext, &key).unwrap();
         let (ciphertext2, nonce2) = crypto_manager.encrypt_data(plaintext, &key).unwrap();
-        
+
         // Different nonces should produce different ciphertexts
         assert_ne!(ciphertext1, ciphertext2);
         assert_ne!(nonce1, nonce2);
@@ -582,10 +629,10 @@ mod tests {
         let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
         let key1 = crypto_manager.derive_key(&password1, &salt).unwrap();
         let key2 = crypto_manager.derive_key(&password2, &salt).unwrap();
-        
+
         let plaintext = b"Hello, World!";
         let (ciphertext, nonce) = crypto_manager.encrypt_data(plaintext, &key1).unwrap();
-        
+
         // Should fail with wrong key
         let result = crypto_manager.decrypt_data(&ciphertext, &nonce, &key2);
         assert!(result.is_err());
@@ -597,11 +644,11 @@ mod tests {
         let password = SecurePassword::new("TestPassword123!@#".to_string());
         let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
         let key = crypto_manager.derive_key(&password, &salt).unwrap();
-        
+
         let plaintext = b"Hello, World!";
         let (ciphertext, _) = crypto_manager.encrypt_data(plaintext, &key).unwrap();
         let wrong_nonce = vec![0u8; 12]; // Wrong nonce
-        
+
         // Should fail with wrong nonce
         let result = crypto_manager.decrypt_data(&ciphertext, &wrong_nonce, &key);
         assert!(result.is_err());
@@ -613,11 +660,11 @@ mod tests {
         let password = SecurePassword::new("TestPassword123!@#".to_string());
         let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
         let key = crypto_manager.derive_key(&password, &salt).unwrap();
-        
+
         let plaintext = b"Hello, World!";
         let (ciphertext, _) = crypto_manager.encrypt_data(plaintext, &key).unwrap();
         let invalid_nonce = vec![0u8; 10]; // Invalid nonce length
-        
+
         let result = crypto_manager.decrypt_data(&ciphertext, &invalid_nonce, &key);
         assert!(matches!(result, Err(CryptoError::InvalidNonceLength)));
     }
@@ -628,11 +675,13 @@ mod tests {
         let password = SecurePassword::new("TestPassword123!@#".to_string());
         let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
         let key = crypto_manager.derive_key(&password, &salt).unwrap();
-        
+
         let empty_data = b"";
         let (ciphertext, nonce) = crypto_manager.encrypt_data(empty_data, &key).unwrap();
-        let decrypted = crypto_manager.decrypt_data(&ciphertext, &nonce, &key).unwrap();
-        
+        let decrypted = crypto_manager
+            .decrypt_data(&ciphertext, &nonce, &key)
+            .unwrap();
+
         assert_eq!(empty_data, decrypted.as_slice());
     }
 
@@ -642,12 +691,14 @@ mod tests {
         let password = SecurePassword::new("TestPassword123!@#".to_string());
         let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
         let key = crypto_manager.derive_key(&password, &salt).unwrap();
-        
+
         // Reduced size for faster tests
         let large_data = vec![42u8; 64 * 1024]; // 64KB of data
         let (ciphertext, nonce) = crypto_manager.encrypt_data(&large_data, &key).unwrap();
-        let decrypted = crypto_manager.decrypt_data(&ciphertext, &nonce, &key).unwrap();
-        
+        let decrypted = crypto_manager
+            .decrypt_data(&ciphertext, &nonce, &key)
+            .unwrap();
+
         assert_eq!(large_data, decrypted);
     }
 
@@ -656,14 +707,14 @@ mod tests {
         let test_data = b"Hello, World! This is test data for base64 encoding.";
         let encoded = base64::encode(test_data);
         let decoded = base64::decode(&encoded).unwrap();
-        
+
         assert_eq!(test_data, decoded.as_slice());
     }
 
     #[test]
     fn test_argon2_params_default() {
         let params = Argon2Params::default();
-        
+
         assert_eq!(params.memory, 65536);
         assert_eq!(params.iterations, 3);
         assert_eq!(params.parallelism, 4);
@@ -681,10 +732,10 @@ mod tests {
             let password = SecurePassword::new("TestPassword123!@#".to_string());
             let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
             let key = crypto_manager.derive_key(&password, &salt).unwrap();
-            
+
             let (ciphertext, nonce) = crypto_manager.encrypt_data(&data, &key).unwrap();
             let decrypted = crypto_manager.decrypt_data(&ciphertext, &nonce, &key).unwrap();
-            
+
             prop_assert_eq!(data, decrypted);
         }
 
@@ -694,10 +745,10 @@ mod tests {
         ) {
             let crypto_manager = CryptoManager::new();
             let secure_password = SecurePassword::new(password);
-            
+
             let strength1 = crypto_manager.validate_password_strength(&secure_password);
             let strength2 = crypto_manager.validate_password_strength(&secure_password);
-            
+
             prop_assert_eq!(strength1.is_valid, strength2.is_valid);
             prop_assert_eq!(strength1.score, strength2.score);
         }
@@ -709,10 +760,10 @@ mod tests {
             let crypto_manager = CryptoManager::new();
             let secure_password = SecurePassword::new(password);
             let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
-            
+
             let key1 = crypto_manager.derive_key(&secure_password, &salt).unwrap();
             let key2 = crypto_manager.derive_key(&secure_password, &salt).unwrap();
-            
+
             prop_assert_eq!(key1.as_bytes(), key2.as_bytes());
         }
     }
@@ -722,8 +773,10 @@ mod tests {
     fn test_timing_attack_resistance() {
         let crypto_manager = CryptoManager::new();
         let correct_password = SecurePassword::new("TestPassword123!@#".to_string());
-        let vault_crypto = crypto_manager.create_vault_crypto(&correct_password).unwrap();
-        
+        let vault_crypto = crypto_manager
+            .create_vault_crypto(&correct_password)
+            .unwrap();
+
         // Test multiple wrong passwords to ensure consistent timing
         let wrong_passwords = vec![
             "WrongPassword123!@#",
@@ -731,7 +784,7 @@ mod tests {
             "AnotherWrongPassword123!@#",
             "CompletelyDifferentPassword456$%^",
         ];
-        
+
         let mut times = Vec::new();
         for wrong_password in wrong_passwords {
             let wrong_pass = SecurePassword::new(wrong_password.to_string());
@@ -739,14 +792,21 @@ mod tests {
             let _ = crypto_manager.verify_password(&wrong_pass, &vault_crypto);
             times.push(start.elapsed());
         }
-        
+
         // All verification attempts should take roughly the same time
         // (within reasonable bounds for timing attack resistance)
         let avg_time = times.iter().sum::<std::time::Duration>() / times.len() as u32;
         for time in times {
-            let diff = if time > avg_time { time - avg_time } else { avg_time - time };
-            assert!(diff < std::time::Duration::from_millis(100), 
-                   "Timing difference too large: {:?}", diff);
+            let diff = if time > avg_time {
+                time - avg_time
+            } else {
+                avg_time - time
+            };
+            assert!(
+                diff < std::time::Duration::from_millis(100),
+                "Timing difference too large: {:?}",
+                diff
+            );
         }
     }
 
@@ -754,7 +814,7 @@ mod tests {
     fn test_salt_uniqueness() {
         let crypto_manager = CryptoManager::new();
         let password = SecurePassword::new("TestPassword123!@#".to_string());
-        
+
         let mut salts = HashSet::new();
         // Reduced iterations for faster tests
         for _ in 0..10 {
@@ -770,10 +830,10 @@ mod tests {
         let password = SecurePassword::new("TestPassword123!@#".to_string());
         let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
         let key = crypto_manager.derive_key(&password, &salt).unwrap();
-        
+
         let mut nonces = HashSet::new();
         let plaintext = b"Hello, World!";
-        
+
         // Reduced iterations for faster tests
         for _ in 0..50 {
             let (_, nonce) = crypto_manager.encrypt_data(plaintext, &key).unwrap();
@@ -787,13 +847,13 @@ mod tests {
         // This test verifies that SecurePassword and EncryptionKey implement zeroize
         let password_data = "TestPassword123!@#".to_string();
         let key_data = [42u8; 32];
-        
+
         {
             let _secure_password = SecurePassword::new(password_data.clone());
             let _encryption_key = EncryptionKey::from_bytes(key_data);
             // Memory should be cleared when these go out of scope
         }
-        
+
         // We can't directly test memory clearing, but we can verify the types implement the trait
         // This is done at compile time by the zeroize derive macro
     }
@@ -802,13 +862,13 @@ mod tests {
     fn test_crypto_manager_default() {
         let crypto_manager1 = CryptoManager::new();
         let crypto_manager2 = CryptoManager::default();
-        
+
         // Both should work the same way
         let password = SecurePassword::new("TestPassword123!@#".to_string());
         let strength1 = crypto_manager1.validate_password_strength(&password);
         let strength2 = crypto_manager2.validate_password_strength(&password);
-        
+
         assert_eq!(strength1.is_valid, strength2.is_valid);
         assert_eq!(strength1.score, strength2.score);
     }
-} 
+}

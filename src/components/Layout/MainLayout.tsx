@@ -1,5 +1,3 @@
-import { ReactNode, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router';
 import { 
   AppShell, 
   Group, 
@@ -20,9 +18,13 @@ import {
   IconDeviceDesktop, 
   IconLogout 
 } from '@tabler/icons-react';
+import { ReactNode, useState, useCallback } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router';
+
 import { useTheme } from '../../hooks/useTheme';
 import { DraggableTreeNotesList } from '../DraggableTreeNotesList';
-import React from 'react';
+
 
 interface MainLayoutProps {
   children: ReactNode;

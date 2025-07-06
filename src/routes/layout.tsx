@@ -1,5 +1,6 @@
-import { Outlet } from "react-router";
 import { Provider as JotaiProvider } from 'jotai';
+import { Outlet } from "react-router";
+
 import { useTheme } from '../hooks/useTheme';
 
 // Component to initialize theme system without context

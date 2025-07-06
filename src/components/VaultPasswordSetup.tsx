@@ -1,4 +1,3 @@
-import { useState, useCallback } from 'react';
 import { 
   Container, 
   Paper, 
@@ -21,8 +20,10 @@ import {
   IconCheck, 
   IconShield
 } from '@tabler/icons-react';
-import { api } from '../utils/api';
+import { useState, useCallback } from 'react';
+
 import type { VaultPasswordSetupState, VaultInfo } from '../types';
+import { api } from '../utils/api';
 
 interface VaultPasswordSetupProps {
   vaultPath: string;
@@ -62,7 +63,7 @@ export function VaultPasswordSetup({ vaultPath, onVaultCreated, onCancel }: Vaul
       try {
         const strength = await api.validatePasswordStrength(password);
         setState(prev => ({ ...prev, passwordStrength: strength }));
-      } catch (error) {
+      } catch (_error) {
         // If password strength validation fails, we can still proceed
         setState(prev => ({ ...prev, passwordStrength: null }));
       }

@@ -1,6 +1,7 @@
+import { useMantineColorScheme, MantineColorScheme } from '@mantine/core';
 import { useAtom, useAtomValue } from 'jotai';
 import { useEffect } from 'react';
-import { useMantineColorScheme, MantineColorScheme } from '@mantine/core';
+
 import { themeAtom, effectiveThemeAtom } from '../stores/notesStore';
 
 export function useTheme() {

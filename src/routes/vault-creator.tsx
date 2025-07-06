@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router';
+
 import { VaultCreator } from '../components/VaultCreator';
 import type { VaultInfo } from '../types';
 

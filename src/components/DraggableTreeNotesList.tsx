@@ -1,7 +1,3 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useAtomValue, useSetAtom } from 'jotai';
-import { Menu, rem, Modal, Button, Text, Group } from '@mantine/core';
-import { IconTrash } from '@tabler/icons-react';
 import {
   DndContext,
   DragEndEvent,
@@ -19,10 +15,11 @@ import {
 } from '@dnd-kit/core';
 import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { Menu, rem, Modal, Button, Text, Group } from '@mantine/core';
+import { IconTrash } from '@tabler/icons-react';
+import { useAtomValue, useSetAtom } from 'jotai';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 
-import { api } from '../utils/api';
-import type { NoteMetadata } from '../types';
-import { Icons } from './Icons';
 import { 
   notesAtom, 
   foldersAtom, 
@@ -32,6 +29,10 @@ import {
   addFolderAtom,
   generateUniquefolderNameAtom
 } from '../stores/notesStore';
+import type { NoteMetadata } from '../types';
+import { api } from '../utils/api';
+
+import { Icons } from './Icons';
 import './NotesList.css';
 
 

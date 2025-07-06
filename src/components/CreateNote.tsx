@@ -1,4 +1,3 @@
-import { useState, useCallback } from 'react';
 import { 
   Container, 
   Paper, 
@@ -19,8 +18,10 @@ import {
   IconFileText,
   IconCheck
 } from '@tabler/icons-react';
-import { api } from '../utils/api';
+import { useState, useCallback } from 'react';
+
 import type { CreateNoteResult } from '../types';
+import { api } from '../utils/api';
 
 interface CreateNoteProps {
   vaultPath: string;

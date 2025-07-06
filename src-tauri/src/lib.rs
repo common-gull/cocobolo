@@ -8,7 +8,7 @@ mod vault;
 
 use config::{AppConfig, ConfigError, KnownVault};
 use crypto::{CryptoError, CryptoManager, PasswordStrength, SecurePassword};
-use vault::{VaultManager, VaultInfo, VaultError, Note, NoteMetadata};
+use vault::{Note, NoteMetadata, VaultError, VaultInfo, VaultManager};
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -138,14 +138,19 @@ fn greet(name: &str) -> Result<String, AppError> {
     if name.trim().is_empty() {
         return Err(AppError::Application("Name cannot be empty".to_string()));
     }
-    Ok(format!("Hello, {}! Welcome to Cocobolo - your secure note-taking companion!", name))
+    Ok(format!(
+        "Hello, {}! Welcome to Cocobolo - your secure note-taking companion!",
+        name
+    ))
 }
 
 #[tauri::command]
 async fn select_vault_directory() -> Result<Option<String>, AppError> {
     // This command is not used - directory selection is handled in the frontend
     // using the dialog plugin directly
-    Err(AppError::Application("This command should be called from the frontend".to_string()))
+    Err(AppError::Application(
+        "This command should be called from the frontend".to_string(),
+    ))
 }
 
 #[tauri::command]
@@ -166,7 +171,9 @@ async fn validate_vault_location(path: String) -> Result<VaultLocationInfo, AppE
     }
 
     if !is_directory {
-        return Err(AppError::Application("Selected path is not a directory".to_string()));
+        return Err(AppError::Application(
+            "Selected path is not a directory".to_string(),
+        ));
     }
 
     // Test write permissions
@@ -211,7 +218,8 @@ async fn set_vault_location(path: String) -> Result<(), AppError> {
         config.set_current_vault(Some(existing_vault.id.clone()))?;
     } else {
         // Add as new vault and set as current
-        let vault_name = path_buf.file_name()
+        let vault_name = path_buf
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("Vault")
             .to_string();
@@ -250,13 +258,11 @@ async fn add_known_vault(request: AddVaultRequest) -> Result<AddVaultResult, App
                 error_message: None,
             })
         }
-        Err(e) => {
-            Ok(AddVaultResult {
-                success: false,
-                vault_id: None,
-                error_message: Some(e.to_string()),
-            })
-        }
+        Err(e) => Ok(AddVaultResult {
+            success: false,
+            vault_id: None,
+            error_message: Some(e.to_string()),
+        }),
     }
 }
 
@@ -357,7 +363,11 @@ async fn check_vault_setup_status(path: String) -> Result<VaultSetupInfo, AppErr
 }
 
 #[tauri::command]
-async fn create_encrypted_vault(path: String, vault_name: String, password: String) -> Result<VaultInfo, AppError> {
+async fn create_encrypted_vault(
+    path: String,
+    vault_name: String,
+    password: String,
+) -> Result<VaultInfo, AppError> {
     let path_buf = std::path::PathBuf::from(&path);
     let vault_manager = VaultManager::new(&path_buf);
     let secure_password = SecurePassword::new(password);
@@ -412,7 +422,10 @@ async fn unlock_vault(path: String, password: String) -> Result<VaultUnlockResul
             let error_message = match &vault_error {
                 VaultError::InvalidPassword => "Incorrect password. Please try again.".to_string(),
                 VaultError::RateLimited(seconds) => {
-                    format!("Too many failed attempts. Please wait {} seconds before trying again.", seconds)
+                    format!(
+                        "Too many failed attempts. Please wait {} seconds before trying again.",
+                        seconds
+                    )
                 }
                 VaultError::VaultCorrupted => "Vault file is corrupted or invalid.".to_string(),
                 VaultError::NotEncrypted(_) => "This vault is not encrypted.".to_string(),
@@ -449,7 +462,7 @@ async fn create_note(
     content: Option<String>,
     tags: Option<Vec<String>>,
     folder_path: Option<String>,
-    note_type: Option<String>
+    note_type: Option<String>,
 ) -> Result<CreateNoteResult, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
@@ -463,7 +476,9 @@ async fn create_note(
         Err(vault_error) => {
             let error_message = match &vault_error {
                 VaultError::InvalidNoteTitle(msg) => msg.clone(),
-                VaultError::InvalidPassword => "Session expired. Please unlock vault again.".to_string(),
+                VaultError::InvalidPassword => {
+                    "Session expired. Please unlock vault again.".to_string()
+                }
                 _ => "Failed to create note.".to_string(),
             };
 
@@ -479,7 +494,7 @@ async fn create_note(
 #[tauri::command]
 async fn get_notes_list(
     vault_path: String,
-    session_id: String
+    session_id: String,
 ) -> Result<Vec<NoteMetadata>, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
@@ -488,10 +503,7 @@ async fn get_notes_list(
 }
 
 #[tauri::command]
-async fn get_folders_list(
-    vault_path: String,
-    session_id: String
-) -> Result<Vec<String>, AppError> {
+async fn get_folders_list(vault_path: String, session_id: String) -> Result<Vec<String>, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
 
@@ -502,7 +514,7 @@ async fn get_folders_list(
 async fn load_note(
     vault_path: String,
     session_id: String,
-    note_id: String
+    note_id: String,
 ) -> Result<Note, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
@@ -514,7 +526,7 @@ async fn load_note(
 async fn create_folder(
     vault_path: String,
     session_id: String,
-    folder_path: String
+    folder_path: String,
 ) -> Result<(), AppError> {
     let vault_manager = VaultManager::new(&vault_path);
     vault_manager.create_folder(&session_id, folder_path)?;
@@ -529,7 +541,7 @@ async fn save_note(
     title: Option<String>,
     content: Option<String>,
     tags: Option<Vec<String>>,
-    folder_path: Option<String>
+    folder_path: Option<String>,
 ) -> Result<SaveNoteResult, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
@@ -544,7 +556,9 @@ async fn save_note(
             let error_message = match &vault_error {
                 VaultError::NoteNotFound(_) => "Note not found.".to_string(),
                 VaultError::InvalidNoteTitle(msg) => msg.clone(),
-                VaultError::InvalidPassword => "Session expired. Please unlock vault again.".to_string(),
+                VaultError::InvalidPassword => {
+                    "Session expired. Please unlock vault again.".to_string()
+                }
                 _ => "Failed to save note.".to_string(),
             };
 
@@ -561,7 +575,7 @@ async fn save_note(
 async fn delete_note(
     vault_path: String,
     session_id: String,
-    note_id: String
+    note_id: String,
 ) -> Result<bool, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
@@ -576,7 +590,7 @@ async fn delete_note(
 async fn delete_folder(
     vault_path: String,
     session_id: String,
-    folder_path: String
+    folder_path: String,
 ) -> Result<bool, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
@@ -592,7 +606,7 @@ async fn move_note(
     vault_path: String,
     session_id: String,
     note_id: String,
-    new_folder_path: Option<String>
+    new_folder_path: Option<String>,
 ) -> Result<bool, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
@@ -608,7 +622,7 @@ async fn move_folder(
     vault_path: String,
     session_id: String,
     old_path: String,
-    new_path: String
+    new_path: String,
 ) -> Result<bool, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
@@ -624,7 +638,7 @@ async fn rename_folder(
     vault_path: String,
     session_id: String,
     folder_path: String,
-    new_name: String
+    new_name: String,
 ) -> Result<bool, AppError> {
     let path_buf = std::path::PathBuf::from(&vault_path);
     let vault_manager = VaultManager::new(&path_buf);
@@ -699,10 +713,9 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use serial_test::serial;
     use std::env;
-
+    use tempfile::TempDir;
 
     // Helper function to create a temporary directory
     fn setup_temp_dir() -> TempDir {
@@ -721,13 +734,19 @@ mod tests {
 
         assert_eq!(info.name, "Cocobolo");
         assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
-        assert_eq!(info.description, "A secure, encrypted note-taking application");
+        assert_eq!(
+            info.description,
+            "A secure, encrypted note-taking application"
+        );
     }
 
     #[test]
     fn test_greet_valid_name() {
         let result = greet("Alice").unwrap();
-        assert_eq!(result, "Hello, Alice! Welcome to Cocobolo - your secure note-taking companion!");
+        assert_eq!(
+            result,
+            "Hello, Alice! Welcome to Cocobolo - your secure note-taking companion!"
+        );
     }
 
     #[test]
@@ -793,7 +812,9 @@ mod tests {
     async fn test_validate_vault_location_with_existing_vault() {
         let temp_dir = setup_temp_dir();
         let vault_manager = VaultManager::new(temp_dir.path());
-        vault_manager.initialize_vault("Test Vault".to_string()).unwrap();
+        vault_manager
+            .initialize_vault("Test Vault".to_string())
+            .unwrap();
 
         let path = temp_dir.path().to_string_lossy().to_string();
         let result = validate_vault_location(path.clone()).await.unwrap();
@@ -1029,7 +1050,9 @@ mod tests {
     async fn test_check_vault_setup_status_with_vault() {
         let temp_dir = setup_temp_dir();
         let vault_manager = VaultManager::new(temp_dir.path());
-        vault_manager.initialize_vault("Test Vault".to_string()).unwrap();
+        vault_manager
+            .initialize_vault("Test Vault".to_string())
+            .unwrap();
 
         let path = temp_dir.path().to_string_lossy().to_string();
         let result = check_vault_setup_status(path).await.unwrap();
@@ -1046,7 +1069,9 @@ mod tests {
         let vault_name = "Test Encrypted Vault".to_string();
         let password = "TestPassword123!@#".to_string();
 
-        let vault_info = create_encrypted_vault(path.clone(), vault_name.clone(), password.clone()).await.unwrap();
+        let vault_info = create_encrypted_vault(path.clone(), vault_name.clone(), password.clone())
+            .await
+            .unwrap();
 
         assert_eq!(vault_info.name, vault_name);
         assert!(vault_info.is_encrypted);
@@ -1065,10 +1090,14 @@ mod tests {
         let correct_password = "TestPassword123!@#".to_string();
         let wrong_password = "WrongPassword123!@#".to_string();
 
-        create_encrypted_vault(path.clone(), vault_name, correct_password.clone()).await.unwrap();
+        create_encrypted_vault(path.clone(), vault_name, correct_password.clone())
+            .await
+            .unwrap();
 
         // Test correct password
-        let is_valid = verify_vault_password(path.clone(), correct_password).await.unwrap();
+        let is_valid = verify_vault_password(path.clone(), correct_password)
+            .await
+            .unwrap();
         assert!(is_valid);
 
         // Test wrong password
@@ -1095,7 +1124,9 @@ mod tests {
         let vault_name = "Test Vault".to_string();
         let password = "TestPassword123!@#".to_string();
 
-        create_encrypted_vault(path.clone(), vault_name, password.clone()).await.unwrap();
+        create_encrypted_vault(path.clone(), vault_name, password.clone())
+            .await
+            .unwrap();
 
         // Unlock vault
         let unlock_result = unlock_vault(path, password).await.unwrap();
@@ -1128,7 +1159,9 @@ mod tests {
         let correct_password = "TestPassword123!@#".to_string();
         let wrong_password = "WrongPassword123!@#".to_string();
 
-        create_encrypted_vault(path.clone(), vault_name, correct_password).await.unwrap();
+        create_encrypted_vault(path.clone(), vault_name, correct_password)
+            .await
+            .unwrap();
 
         let unlock_result = unlock_vault(path, wrong_password).await.unwrap();
         assert!(!unlock_result.success);
@@ -1145,15 +1178,21 @@ mod tests {
         let vault_name = "Test Vault".to_string();
         let password = "TestPassword123!@#".to_string();
 
-        create_encrypted_vault(path.clone(), vault_name, password.clone()).await.unwrap();
+        create_encrypted_vault(path.clone(), vault_name, password.clone())
+            .await
+            .unwrap();
         let unlock_result = unlock_vault(path.clone(), password).await.unwrap();
         let session_id = unlock_result.session_id.unwrap();
 
         // Create folder
-        create_folder(path.clone(), session_id.clone(), "test_folder".to_string()).await.unwrap();
+        create_folder(path.clone(), session_id.clone(), "test_folder".to_string())
+            .await
+            .unwrap();
 
         // Get folders list
-        let folders = get_folders_list(path.clone(), session_id.clone()).await.unwrap();
+        let folders = get_folders_list(path.clone(), session_id.clone())
+            .await
+            .unwrap();
         assert_eq!(folders.len(), 1);
         assert_eq!(folders[0], "test_folder");
 
@@ -1165,8 +1204,10 @@ mod tests {
             Some("Test content".to_string()),
             Some(vec!["tag1".to_string()]),
             Some("test_folder".to_string()),
-            Some("text".to_string())
-        ).await.unwrap();
+            Some("text".to_string()),
+        )
+        .await
+        .unwrap();
 
         assert!(create_result.success);
         assert!(create_result.note.is_some());
@@ -1179,12 +1220,16 @@ mod tests {
         assert_eq!(note.folder_path, Some("test_folder".to_string()));
 
         // Get notes list
-        let notes_list = get_notes_list(path.clone(), session_id.clone()).await.unwrap();
+        let notes_list = get_notes_list(path.clone(), session_id.clone())
+            .await
+            .unwrap();
         assert_eq!(notes_list.len(), 1);
         assert_eq!(notes_list[0].id, note.id);
 
         // Load note
-        let loaded_note = load_note(path.clone(), session_id.clone(), note.id.clone()).await.unwrap();
+        let loaded_note = load_note(path.clone(), session_id.clone(), note.id.clone())
+            .await
+            .unwrap();
         assert_eq!(loaded_note.title, "Test Note");
         assert_eq!(loaded_note.content, "Test content");
 
@@ -1196,8 +1241,10 @@ mod tests {
             Some("Updated Title".to_string()),
             Some("Updated content".to_string()),
             Some(vec!["tag1".to_string(), "tag2".to_string()]),
-            Some("test_folder".to_string())
-        ).await.unwrap();
+            Some("test_folder".to_string()),
+        )
+        .await
+        .unwrap();
 
         assert!(save_result.success);
         assert!(save_result.note.is_some());
@@ -1212,20 +1259,29 @@ mod tests {
             path.clone(),
             session_id.clone(),
             note.id.clone(),
-            Some("new_folder".to_string())
-        ).await.unwrap();
+            Some("new_folder".to_string()),
+        )
+        .await
+        .unwrap();
         assert!(moved);
 
         // Delete note
-        let deleted = delete_note(path.clone(), session_id.clone(), note.id).await.unwrap();
+        let deleted = delete_note(path.clone(), session_id.clone(), note.id)
+            .await
+            .unwrap();
         assert!(deleted);
 
         // Verify note is deleted
-        let notes_list = get_notes_list(path.clone(), session_id.clone()).await.unwrap();
+        let notes_list = get_notes_list(path.clone(), session_id.clone())
+            .await
+            .unwrap();
         assert_eq!(notes_list.len(), 0);
 
         // Delete folder
-        let folder_deleted = delete_folder(path.clone(), session_id.clone(), "test_folder".to_string()).await.unwrap();
+        let folder_deleted =
+            delete_folder(path.clone(), session_id.clone(), "test_folder".to_string())
+                .await
+                .unwrap();
         assert!(folder_deleted);
 
         close_vault_session(session_id).await.unwrap();
@@ -1239,21 +1295,29 @@ mod tests {
         let vault_name = "Test Vault".to_string();
         let password = "TestPassword123!@#".to_string();
 
-        create_encrypted_vault(path.clone(), vault_name, password.clone()).await.unwrap();
+        create_encrypted_vault(path.clone(), vault_name, password.clone())
+            .await
+            .unwrap();
         let unlock_result = unlock_vault(path.clone(), password).await.unwrap();
         let session_id = unlock_result.session_id.unwrap();
 
         // Create folders
-        create_folder(path.clone(), session_id.clone(), "folder1".to_string()).await.unwrap();
-        create_folder(path.clone(), session_id.clone(), "folder2".to_string()).await.unwrap();
+        create_folder(path.clone(), session_id.clone(), "folder1".to_string())
+            .await
+            .unwrap();
+        create_folder(path.clone(), session_id.clone(), "folder2".to_string())
+            .await
+            .unwrap();
 
         // Move folder
         let moved = move_folder(
             path.clone(),
             session_id.clone(),
             "folder1".to_string(),
-            "renamed_folder".to_string()
-        ).await.unwrap();
+            "renamed_folder".to_string(),
+        )
+        .await
+        .unwrap();
         assert!(moved);
 
         // Rename folder
@@ -1261,12 +1325,16 @@ mod tests {
             path.clone(),
             session_id.clone(),
             "folder2".to_string(),
-            "new_name".to_string()
-        ).await.unwrap();
+            "new_name".to_string(),
+        )
+        .await
+        .unwrap();
         assert!(renamed);
 
         // Verify folders
-        let folders = get_folders_list(path.clone(), session_id.clone()).await.unwrap();
+        let folders = get_folders_list(path.clone(), session_id.clone())
+            .await
+            .unwrap();
         assert_eq!(folders.len(), 2);
         assert!(folders.contains(&"renamed_folder".to_string()));
         assert!(folders.contains(&"new_name".to_string()));
@@ -1390,8 +1458,10 @@ mod tests {
             None,
             None,
             None,
-            None
-        ).await.unwrap();
+            None,
+        )
+        .await
+        .unwrap();
 
         assert!(!result.success);
         assert!(result.note.is_none());
@@ -1414,6 +1484,10 @@ mod tests {
         let elapsed = start.elapsed();
 
         // Should complete 100 validations in reasonable time
-        assert!(elapsed.as_secs() < 5, "Password validation took too long: {:?}", elapsed);
+        assert!(
+            elapsed.as_secs() < 5,
+            "Password validation took too long: {:?}",
+            elapsed
+        );
     }
 }

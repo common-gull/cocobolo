@@ -1,18 +1,21 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import CodeMirror from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
-import { languages } from '@codemirror/language-data';
-import { oneDark } from '@codemirror/theme-one-dark';
-import { githubLight } from '@uiw/codemirror-theme-github';
-import { EditorView } from '@codemirror/view';
-import { Extension } from '@codemirror/state';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { languages } from '@codemirror/language-data';
+import { Extension } from '@codemirror/state';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { EditorView } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
-import debounce from 'lodash.debounce';
 import { Menu, Button, Modal, Text, Group, ActionIcon } from '@mantine/core';
-import { api } from '../utils/api';
-import { Icons } from './Icons';
+import { githubLight } from '@uiw/codemirror-theme-github';
+import CodeMirror from '@uiw/react-codemirror';
+import debounce from 'lodash.debounce';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+
+
 import type { Note, SaveNoteResult } from '../types';
+import { api } from '../utils/api';
+
+import { Icons } from './Icons';
 import './MarkdownEditor.css';
 
 interface MarkdownEditorProps {

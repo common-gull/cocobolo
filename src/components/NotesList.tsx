@@ -1,10 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useAtomValue, useSetAtom } from 'jotai';
 import { Menu, rem, Modal, Button, Text, Group } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
-import { api } from '../utils/api';
-import type { NoteMetadata } from '../types';
-import { Icons } from './Icons';
+import { useAtomValue, useSetAtom } from 'jotai';
+import { useState, useEffect, useCallback } from 'react';
+
 import { 
   notesAtom, 
   foldersAtom, 
@@ -13,6 +11,11 @@ import {
   loadNotesAtom,
   addFolderAtom 
 } from '../stores/notesStore';
+import type { NoteMetadata } from '../types';
+import { api } from '../utils/api';
+
+import { Icons } from './Icons';
+
 import './NotesList.css';
 
 interface NotesListProps {

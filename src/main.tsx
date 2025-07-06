@@ -1,24 +1,21 @@
+import { MantineProvider } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router";
-import { MantineProvider } from '@mantine/core';
-import { Notifications } from '@mantine/notifications';
-import { mantineTheme } from './theme/mantine-theme';
 
-// Import Mantine styles
+import App from './routes/app';
+import AppLayout from './routes/app-layout';
+import Document from './routes/document';
+import Home from './routes/home';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import '@mantine/spotlight/styles.css';
-
-// Import route components
 import Layout from './routes/layout';
-import Home from './routes/home';
-import VaultSelector from './routes/vault-selector';
 import VaultCreator from './routes/vault-creator';
+import VaultSelector from './routes/vault-selector';
 import VaultUnlock from './routes/vault-unlock';
-import AppLayout from './routes/app-layout';
-import App from './routes/app';
-import Document from './routes/document';
+import { mantineTheme } from './theme/mantine-theme';
 
 // Error boundary component
 function ErrorBoundary({ error }: { error: Error }) {

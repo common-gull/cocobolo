@@ -1,6 +1,3 @@
-import { useEffect, useState, lazy, Suspense, useCallback } from 'react';
-import { useParams, useNavigate, useOutletContext } from 'react-router';
-import { useAtomValue, useSetAtom } from 'jotai';
 import { 
   Container, 
   Loader,
@@ -10,11 +7,15 @@ import {
   Text
 } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
-import { api } from '../utils/api';
+import { useAtomValue, useSetAtom } from 'jotai';
+import { useEffect, useState, lazy, Suspense, useCallback } from 'react';
+import { useParams, useNavigate, useOutletContext } from 'react-router';
+
+import { WhiteboardEditor } from '../components/WhiteboardEditor';
 import { useTheme } from '../hooks/useTheme';
 import { notesAtom, updateNoteAtom, removeNoteAtom } from '../stores/notesStore';
 import type { Note, NoteMetadata } from '../types';
-import { WhiteboardEditor } from '../components/WhiteboardEditor';
+import { api } from '../utils/api';
 
 // Lazy load the editor components for better performance
 const MarkdownEditor = lazy(() => import('../components/MarkdownEditor').then(module => ({ default: module.MarkdownEditor })));
