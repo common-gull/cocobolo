@@ -1,7 +1,7 @@
+import { useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
-import { useAtomValue, useSetAtom } from 'jotai';
-import { api } from '../utils/api';
+
 import { MainLayout } from '../components/Layout/MainLayout';
 import { 
   addNoteAtom,
@@ -14,6 +14,7 @@ import {
   appLoadingAtom
 } from '../stores/notesStore';
 import type { NoteMetadata } from '../types';
+import { api } from '../utils/api';
 
 export default function AppLayout() {
   const navigate = useNavigate();

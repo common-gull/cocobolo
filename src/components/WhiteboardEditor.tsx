@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Excalidraw } from "@excalidraw/excalidraw";
 import { 
   Container, 
   Paper, 
@@ -17,11 +17,14 @@ import {
   IconDots
 } from '@tabler/icons-react';
 import debounce from 'lodash.debounce';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+
 import { useTheme } from '../hooks/useTheme';
-import { api } from '../utils/api';
 import type { CreateNoteResult, SaveNoteResult, Note } from '../types';
+import { api } from '../utils/api';
+
 import { Icons } from './Icons';
-import { Excalidraw } from "@excalidraw/excalidraw";
+
 import "@excalidraw/excalidraw/index.css";
 import './WhiteboardEditor.css';
 
@@ -440,7 +443,7 @@ export function WhiteboardEditor({
           excalidrawAPI={(api) => {
             excalidrawRef.current = api;
           }}
-          onChange={(elements, _appState, _files) => {
+          onChange={(elements) => {
             if (elements && elements.length > 0) {
               hasContentRef.current = true;
             }

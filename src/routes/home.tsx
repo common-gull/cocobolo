@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react';
-import { useAtomValue, useSetAtom } from 'jotai';
 import { 
   Container, 
   Paper, 
@@ -21,13 +19,16 @@ import {
   IconAlertTriangle,
   IconCheck
 } from '@tabler/icons-react';
-import { api } from '../utils/api';
+import { useAtomValue, useSetAtom } from 'jotai';
+import { useEffect, useState } from 'react';
+
 import { 
   appLoadingAtom, 
   appErrorAtom, 
   currentVaultLocationAtom 
 } from '../stores/notesStore';
 import type { AppInfo, VaultSetupInfo } from '../types';
+import { api } from '../utils/api';
 
 export default function Home() {
   

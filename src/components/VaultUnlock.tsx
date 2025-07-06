@@ -1,4 +1,3 @@
-import { useState, useCallback, useEffect } from 'react';
 import { 
   Container, 
   Paper, 
@@ -21,8 +20,10 @@ import {
   IconClock, 
   IconShield
 } from '@tabler/icons-react';
-import { api } from '../utils/api';
+import { useState, useCallback, useEffect } from 'react';
+
 import type { VaultUnlockState, VaultInfo, VaultUnlockResult } from '../types';
+import { api } from '../utils/api';
 
 interface VaultUnlockProps {
   vaultPath: string;

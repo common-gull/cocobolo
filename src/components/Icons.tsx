@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   // Navigation & UI
   IconMenu2,
@@ -42,6 +41,7 @@ import {
   IconEdit,
   
 } from '@tabler/icons-react';
+import React from 'react';
 
 // Generic icon props type
 type TablerIconsProps = React.ComponentProps<typeof IconLock>;

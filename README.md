@@ -32,6 +32,16 @@ npm run tauri dev
 npm run tauri build
 ```
 
+### Code Quality
+```bash
+# Type checking
+npm run type-check
+
+# Linting
+npm run lint
+npm run lint:fix
+```
+
 ## Security
 
 Cocobolo prioritizes security and privacy:

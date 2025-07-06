@@ -1,4 +1,3 @@
-import { useOutletContext } from 'react-router';
 import { 
   Container, 
   Paper, 
@@ -15,11 +14,13 @@ import {
   IconPalette,
   IconPlus
 } from '@tabler/icons-react';
-import { useNavigate } from 'react-router';
 import { useSetAtom } from 'jotai';
-import { api } from '../utils/api';
+import { useNavigate } from 'react-router';
+import { useOutletContext } from 'react-router';
+
 import { addNoteAtom } from '../stores/notesStore';
 import type { NoteMetadata } from '../types';
+import { api } from '../utils/api';
 
 interface AppContext {
   sessionId: string;

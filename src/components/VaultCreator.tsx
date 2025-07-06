@@ -1,5 +1,3 @@
-import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router';
 import { 
   Container, 
   Paper, 
@@ -29,8 +27,11 @@ import {
   IconX,
   IconInfoCircle
 } from '@tabler/icons-react';
-import { api } from '../utils/api';
+import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router';
+
 import type { VaultPasswordSetupState, VaultInfo, VaultLocationInfo } from '../types';
+import { api } from '../utils/api';
 
 interface VaultCreatorProps {
   onVaultCreated?: (sessionId: string | null, vaultInfo: VaultInfo | null) => void;
@@ -82,7 +83,7 @@ export function VaultCreator({ onVaultCreated, onCancel }: VaultCreatorProps) {
       try {
         const strength = await api.validatePasswordStrength(password);
         setState(prev => ({ ...prev, passwordStrength: strength }));
-      } catch (error) {
+      } catch (_error) {
         // If password strength validation fails, we can still proceed
         setState(prev => ({ ...prev, passwordStrength: null }));
       }

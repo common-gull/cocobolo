@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
 import { Container, Loader, Center, Stack, Text, Alert } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
+
 import { VaultUnlock } from '../components/VaultUnlock';
-import { api } from '../utils/api';
 import type { VaultInfo, VaultSetupInfo } from '../types';
+import { api } from '../utils/api';
 
 export default function VaultUnlockRoute() {
   const navigate = useNavigate();

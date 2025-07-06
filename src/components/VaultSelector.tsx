@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
 import { 
   Container, 
   Paper, 
@@ -20,6 +18,7 @@ import {
   SimpleGrid,
   Avatar
 } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { 
   IconLock, 
   IconAlertTriangle,
@@ -35,9 +34,11 @@ import {
   IconLink,
   IconCheck
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
-import { api } from '../utils/api';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
+
 import type { KnownVault, VaultLocationInfo } from '../types';
+import { api } from '../utils/api';
 
 interface VaultSelectorProps {
   onVaultSelected?: (vaultId: string) => void;
