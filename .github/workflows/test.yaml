@@ -52,7 +52,7 @@ jobs:
           retention-days: 7
 
   rust-tests:
-    name: 'Run Rust Tests'
+    name: 'Run Rust Checks'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -106,6 +106,9 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
+
+      - name: Run fmt
+        run: cd src-tauri && cargo fmt
 
       - name: Run Rust tests
         run: cd src-tauri && cargo test
