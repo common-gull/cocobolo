@@ -1,39 +1,16 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 
 mod config;
 mod crypto;
 mod vault;
+mod errors;
 
-use config::{AppConfig, ConfigError, KnownVault};
-use crypto::{CryptoError, CryptoManager, PasswordStrength, SecurePassword};
+use config::{AppConfig, KnownVault};
+use crypto::{CryptoManager, PasswordStrength, SecurePassword};
 use vault::{Note, NoteMetadata, VaultError, VaultInfo, VaultManager};
+use errors::AppError;
 
-#[derive(Error, Debug)]
-pub enum AppError {
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("Serialization error: {0}")]
-    Serialization(#[from] serde_json::Error),
-    #[error("Configuration error: {0}")]
-    Config(#[from] ConfigError),
-    #[error("Vault error: {0}")]
-    Vault(#[from] VaultError),
-    #[error("Cryptographic error: {0}")]
-    Crypto(#[from] CryptoError),
-    #[error("Application error: {0}")]
-    Application(String),
-}
-
-impl Serialize for AppError {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        serializer.serialize_str(self.to_string().as_ref())
-    }
-}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AppInfo {
