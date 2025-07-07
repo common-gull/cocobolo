@@ -16,6 +16,9 @@ import VaultSelector from './routes/vault-selector';
 import VaultUnlock from './routes/vault-unlock';
 import { mantineTheme } from './theme/mantine-theme';
 
+// @ts-ignore
+window.EXCALIDRAW_ASSET_PATH = "/";
+
 // Error boundary component
 function ErrorBoundary({ error }: { error: Error }) {
   return (
