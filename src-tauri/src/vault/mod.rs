@@ -36,7 +36,7 @@ pub enum VaultError {
     CryptoError(#[from] CryptoError),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct VaultInfo {
     pub name: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -68,7 +68,7 @@ impl VaultInfo {
 }
 
 /// Individual note data
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Note {
     pub id: String,
     pub title: String,

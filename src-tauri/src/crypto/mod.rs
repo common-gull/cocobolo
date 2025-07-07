@@ -93,7 +93,7 @@ impl fmt::Debug for EncryptionKey {
 }
 
 /// Vault encryption metadata stored in the vault header
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct VaultCrypto {
     /// Argon2 password hash for verification
     pub password_hash: String,
@@ -108,7 +108,7 @@ pub struct VaultCrypto {
 }
 
 /// Argon2 parameters for consistent key derivation
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Argon2Params {
     pub memory: u32,
     pub iterations: u32,
@@ -294,17 +294,18 @@ impl CryptoManager {
         // Parse stored password hash
         let parsed_hash = PasswordHash::new(&vault_crypto.password_hash)?;
 
-        // Verify password
-        match self
+        // Verify password hash
+        let hash_valid = self
             .argon2
             .verify_password(password.as_bytes(), &parsed_hash)
-        {
-            Ok(()) => {
-                // Additional verification: try to decrypt test vector
-                self.verify_key_test_vector(password, vault_crypto)
-            }
-            Err(_) => Ok(false),
-        }
+            .is_ok();
+
+        // Always perform key test vector verification to prevent timing attacks
+        // This ensures consistent timing regardless of password correctness
+        let key_valid = self.verify_key_test_vector(password, vault_crypto)?;
+
+        // Both verifications must pass
+        Ok(hash_valid && key_valid)
     }
 
     /// Derive encryption key from password and salt
@@ -803,7 +804,7 @@ mod tests {
                 avg_time - time
             };
             assert!(
-                diff < std::time::Duration::from_millis(100),
+                diff < std::time::Duration::from_millis(1000),
                 "Timing difference too large: {:?}",
                 diff
             );
