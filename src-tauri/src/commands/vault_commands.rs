@@ -187,12 +187,12 @@ pub async fn cleanup_invalid_vaults() -> Result<Vec<String>, AppError> {
 }
 
 #[tauri::command]
-pub async fn check_vault_setup_status(path: String) -> Result<VaultSetupInfo, AppError> {
+pub async fn check_vault_setup_status(path: String) -> Result<VaultSetupStatus, AppError> {
     let path_buf = std::path::PathBuf::from(&path);
     let vault_manager = VaultManager::new(&path_buf);
 
     if !vault_manager.vault_exists() {
-        return Ok(VaultSetupInfo {
+        return Ok(VaultSetupStatus {
             needs_password: true,
             is_encrypted: false,
             vault_info: None,
@@ -202,7 +202,7 @@ pub async fn check_vault_setup_status(path: String) -> Result<VaultSetupInfo, Ap
     let vault_info = vault_manager.load_vault_info()?;
     let is_encrypted = vault_info.is_encrypted;
 
-    Ok(VaultSetupInfo {
+    Ok(VaultSetupStatus {
         needs_password: is_encrypted,
         is_encrypted,
         vault_info: Some(vault_info),
