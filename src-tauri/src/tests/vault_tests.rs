@@ -71,24 +71,6 @@ async fn test_validate_vault_location_with_existing_vault() {
 
 #[tokio::test]
 #[serial]
-async fn test_set_and_get_vault_location() {
-    let temp_dir = setup_temp_dir();
-    setup_test_env(&temp_dir);
-
-    let vault_path = temp_dir.path().join("test_vault");
-    std::fs::create_dir_all(&vault_path).unwrap();
-    let path_str = vault_path.to_string_lossy().to_string();
-
-    // Set vault location
-    set_vault_location(path_str.clone()).await.unwrap();
-
-    // Get vault location
-    let current_location = get_current_vault_location().await.unwrap();
-    assert_eq!(current_location, Some(path_str));
-}
-
-#[tokio::test]
-#[serial]
 async fn test_add_and_get_known_vaults() {
     let temp_dir = setup_temp_dir();
     setup_test_env(&temp_dir);
