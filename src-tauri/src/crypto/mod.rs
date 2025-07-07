@@ -93,7 +93,7 @@ impl fmt::Debug for EncryptionKey {
 }
 
 /// Vault encryption metadata stored in the vault header
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct VaultCrypto {
     /// Argon2 password hash for verification
     pub password_hash: String,
@@ -108,7 +108,7 @@ pub struct VaultCrypto {
 }
 
 /// Argon2 parameters for consistent key derivation
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Argon2Params {
     pub memory: u32,
     pub iterations: u32,

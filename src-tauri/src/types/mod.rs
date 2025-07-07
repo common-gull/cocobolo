@@ -69,7 +69,7 @@ pub struct SaveNoteResult {
     pub error_message: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AddVaultRequest {
     pub name: String,
     pub path: String,
