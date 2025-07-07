@@ -2,8 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 
 import type { 
-  AppInfo, 
-  VaultLocationInfo, 
+  VaultLocationInfo,
   PasswordStrength,
   VaultSetupInfo, 
   VaultInfo,
@@ -30,23 +29,6 @@ export class ApiError extends Error {
 }
 
 export const api = {
-  // Basic app functions
-  async getAppInfo(): Promise<AppInfo> {
-    try {
-      return await invoke<AppInfo>('get_app_info');
-    } catch (error) {
-      throw new ApiError('Failed to get app info', error);
-    }
-  },
-
-  async greet(name: string): Promise<string> {
-    try {
-      return await invoke<string>('greet', { name });
-    } catch (error) {
-      throw new ApiError('Failed to greet', error);
-    }
-  },
-
   // Vault location management
   async selectVaultDirectory(): Promise<string | null> {
     try {

@@ -1,9 +1,3 @@
-export interface AppInfo {
-  name: string;
-  version: string;
-  description: string;
-}
-
 export interface VaultInfo {
   name: string;
   created_at: string;
