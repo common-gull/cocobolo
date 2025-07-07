@@ -2,10 +2,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 
 import type { 
-  AppInfo, 
-  VaultLocationInfo, 
-  AppConfig, 
-  PasswordStrength, 
+  VaultLocationInfo,
+  PasswordStrength,
   VaultSetupInfo, 
   VaultInfo,
   VaultUnlockResult,
@@ -31,23 +29,6 @@ export class ApiError extends Error {
 }
 
 export const api = {
-  // Basic app functions
-  async getAppInfo(): Promise<AppInfo> {
-    try {
-      return await invoke<AppInfo>('get_app_info');
-    } catch (error) {
-      throw new ApiError('Failed to get app info', error);
-    }
-  },
-
-  async greet(name: string): Promise<string> {
-    try {
-      return await invoke<string>('greet', { name });
-    } catch (error) {
-      throw new ApiError('Failed to greet', error);
-    }
-  },
-
   // Vault location management
   async selectVaultDirectory(): Promise<string | null> {
     try {
@@ -71,27 +52,11 @@ export const api = {
     }
   },
 
-  async setVaultLocation(path: string): Promise<void> {
-    try {
-      await invoke<void>('set_vault_location', { path });
-    } catch (error) {
-      throw new ApiError('Failed to set vault location', error);
-    }
-  },
-
   async getCurrentVaultLocation(): Promise<string | null> {
     try {
       return await invoke<string | null>('get_current_vault_location');
     } catch (error) {
       throw new ApiError('Failed to get current vault location', error);
-    }
-  },
-
-  async getAppConfig(): Promise<AppConfig> {
-    try {
-      return await invoke<AppConfig>('get_app_config');
-    } catch (error) {
-      throw new ApiError('Failed to get app config', error);
     }
   },
 

@@ -20,7 +20,7 @@ import {
   IconClock, 
   IconShield
 } from '@tabler/icons-react';
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 
 import type { VaultUnlockState, VaultInfo, VaultUnlockResult } from '../types';
 import { api } from '../utils/api';

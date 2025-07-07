@@ -66,34 +66,6 @@ pub async fn validate_vault_location(path: String) -> Result<VaultLocationInfo, 
     })
 }
 
-// Legacy vault location commands (for backward compatibility)
-#[tauri::command]
-pub async fn set_vault_location(path: String) -> Result<(), AppError> {
-    let mut config = AppConfig::load()?;
-
-    // Use the new multi-vault system
-    let path_buf = std::path::PathBuf::from(&path);
-
-    // Check if this vault already exists in known_vaults
-    if let Some(existing_vault) = config.known_vaults.iter().find(|v| v.path == path_buf) {
-        // Set it as current vault
-        config.set_current_vault(Some(existing_vault.id.clone()))?;
-    } else {
-        // Add as new vault and set as current
-        let vault_name = path_buf
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("Vault")
-            .to_string();
-
-        let vault_id = config.add_known_vault(vault_name, path_buf)?;
-        config.set_current_vault(Some(vault_id))?;
-    }
-
-    config.save()?;
-    Ok(())
-}
-
 #[tauri::command]
 pub async fn get_current_vault_location() -> Result<Option<String>, AppError> {
     let config = AppConfig::load()?;

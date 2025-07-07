@@ -364,7 +364,7 @@ impl RateLimitState {
         self.last_attempt = Instant::now();
 
         // Exponential backoff: 2^attempts seconds, capped at 1 hour
-        let backoff_seconds = (2_u32.pow(self.attempts.min(12))).min(3600);
+        let backoff_seconds = 2_u32.pow(self.attempts.min(12)).min(3600);
         self.locked_until = Some(Instant::now() + Duration::from_secs(backoff_seconds as u64));
     }
 

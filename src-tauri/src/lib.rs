@@ -74,7 +74,6 @@ pub fn run() {
             // Vault commands
             select_vault_directory,
             validate_vault_location,
-            set_vault_location,
             get_current_vault_location,
             add_known_vault,
             remove_known_vault,
@@ -106,9 +105,6 @@ pub fn run() {
             move_folder,
             rename_folder,
             // App commands
-            get_app_info,
-            greet,
-            get_app_config,
             validate_password_strength,
         ])
         .run(tauri::generate_context!())

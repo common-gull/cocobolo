@@ -1,38 +1,36 @@
 import {
+  closestCorners,
   DndContext,
   DragEndEvent,
   DragOverEvent,
   DragOverlay,
   DragStartEvent,
   PointerSensor,
+  UniqueIdentifier,
+  useDraggable,
+  useDroppable,
   useSensor,
   useSensors,
-  closestCorners,
-  UniqueIdentifier,
 } from '@dnd-kit/core';
+import {CSS} from '@dnd-kit/utilities';
+import {Button, Group, Menu, Modal, rem, Text} from '@mantine/core';
+import {IconTrash} from '@tabler/icons-react';
+import {useAtomValue, useSetAtom} from 'jotai';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+
 import {
-  useDraggable,
-} from '@dnd-kit/core';
-import { useDroppable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
-import { Menu, rem, Modal, Button, Text, Group } from '@mantine/core';
-import { IconTrash } from '@tabler/icons-react';
-import { useAtomValue, useSetAtom } from 'jotai';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-
-import { 
-  notesAtom, 
-  foldersAtom, 
-  notesLoadingAtom, 
-  notesErrorAtom,
-  loadNotesAtom,
   addFolderAtom,
-  generateUniquefolderNameAtom
+  foldersAtom,
+  generateUniquefolderNameAtom,
+  loadNotesAtom,
+  notesAtom,
+  notesErrorAtom,
+  notesLoadingAtom
 } from '../stores/notesStore';
-import type { NoteMetadata } from '../types';
-import { api } from '../utils/api';
+import type {NoteMetadata} from '../types';
+import {api} from '../utils/api';
 
-import { Icons } from './Icons';
+import {Icons} from './Icons';
 import './NotesList.css';
 
 
@@ -616,7 +614,7 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
     setConfirmDialog(prev => ({ ...prev, opened: false }));
 
     try {
-      let success = false;
+      let success: boolean;
       if (type === 'folder') {
         success = await api.deleteFolder(vaultPath, sessionId, target);
         if (!success) {
@@ -715,8 +713,7 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
           
           if (targetFolderPath === '' || targetFolderPath === 'root') {
             // Moving to root
-            const folderName = dragItem.folderPath!.split('/').pop()!;
-            newPath = folderName;
+            newPath = dragItem.folderPath!.split('/').pop()!;
           } else {
             // Moving to another folder
             const folderName = dragItem.folderPath!.split('/').pop()!;

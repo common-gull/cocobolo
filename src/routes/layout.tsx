@@ -1,4 +1,5 @@
 import { Provider as JotaiProvider } from 'jotai';
+import React from "react";
 import { Outlet } from "react-router";
 
 import { useTheme } from '../hooks/useTheme';

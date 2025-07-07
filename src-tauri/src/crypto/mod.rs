@@ -569,7 +569,7 @@ mod tests {
     fn test_key_derivation_consistency() {
         let crypto_manager = CryptoManager::new();
         let password = SecurePassword::new("TestPassword123!@#".to_string());
-        let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
+        let salt = SaltString::generate(&mut OsRng);
 
         let key1 = crypto_manager.derive_key(&password, &salt).unwrap();
         let key2 = crypto_manager.derive_key(&password, &salt).unwrap();
@@ -581,8 +581,8 @@ mod tests {
     fn test_key_derivation_different_salts() {
         let crypto_manager = CryptoManager::new();
         let password = SecurePassword::new("TestPassword123!@#".to_string());
-        let salt1 = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
-        let salt2 = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
+        let salt1 = SaltString::generate(&mut OsRng);
+        let salt2 = SaltString::generate(&mut OsRng);
 
         let key1 = crypto_manager.derive_key(&password, &salt1).unwrap();
         let key2 = crypto_manager.derive_key(&password, &salt2).unwrap();
@@ -594,7 +594,7 @@ mod tests {
     fn test_encryption_decryption_roundtrip() {
         let crypto_manager = CryptoManager::new();
         let password = SecurePassword::new("TestPassword123!@#".to_string());
-        let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
+        let salt = SaltString::generate(&mut OsRng);
         let key = crypto_manager.derive_key(&password, &salt).unwrap();
 
         let plaintext = b"Hello, World! This is a test message.";
@@ -610,7 +610,7 @@ mod tests {
     fn test_encryption_produces_different_ciphertexts() {
         let crypto_manager = CryptoManager::new();
         let password = SecurePassword::new("TestPassword123!@#".to_string());
-        let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
+        let salt = SaltString::generate(&mut OsRng);
         let key = crypto_manager.derive_key(&password, &salt).unwrap();
 
         let plaintext = b"Hello, World!";
@@ -627,7 +627,7 @@ mod tests {
         let crypto_manager = CryptoManager::new();
         let password1 = SecurePassword::new("TestPassword123!@#".to_string());
         let password2 = SecurePassword::new("DifferentPassword123!@#".to_string());
-        let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
+        let salt = SaltString::generate(&mut OsRng);
         let key1 = crypto_manager.derive_key(&password1, &salt).unwrap();
         let key2 = crypto_manager.derive_key(&password2, &salt).unwrap();
 
@@ -643,7 +643,7 @@ mod tests {
     fn test_decryption_with_wrong_nonce() {
         let crypto_manager = CryptoManager::new();
         let password = SecurePassword::new("TestPassword123!@#".to_string());
-        let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
+        let salt = SaltString::generate(&mut OsRng);
         let key = crypto_manager.derive_key(&password, &salt).unwrap();
 
         let plaintext = b"Hello, World!";
@@ -659,7 +659,7 @@ mod tests {
     fn test_invalid_nonce_length() {
         let crypto_manager = CryptoManager::new();
         let password = SecurePassword::new("TestPassword123!@#".to_string());
-        let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
+        let salt = SaltString::generate(&mut OsRng);
         let key = crypto_manager.derive_key(&password, &salt).unwrap();
 
         let plaintext = b"Hello, World!";
@@ -674,7 +674,7 @@ mod tests {
     fn test_empty_data_encryption() {
         let crypto_manager = CryptoManager::new();
         let password = SecurePassword::new("TestPassword123!@#".to_string());
-        let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
+        let salt = SaltString::generate(&mut OsRng);
         let key = crypto_manager.derive_key(&password, &salt).unwrap();
 
         let empty_data = b"";
@@ -690,7 +690,7 @@ mod tests {
     fn test_large_data_encryption() {
         let crypto_manager = CryptoManager::new();
         let password = SecurePassword::new("TestPassword123!@#".to_string());
-        let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
+        let salt = SaltString::generate(&mut OsRng);
         let key = crypto_manager.derive_key(&password, &salt).unwrap();
 
         // Reduced size for faster tests
@@ -731,7 +731,7 @@ mod tests {
         ) {
             let crypto_manager = CryptoManager::new();
             let password = SecurePassword::new("TestPassword123!@#".to_string());
-            let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
+            let salt = SaltString::generate(&mut OsRng);
             let key = crypto_manager.derive_key(&password, &salt).unwrap();
 
             let (ciphertext, nonce) = crypto_manager.encrypt_data(&data, &key).unwrap();
@@ -760,7 +760,7 @@ mod tests {
         ) {
             let crypto_manager = CryptoManager::new();
             let secure_password = SecurePassword::new(password);
-            let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
+            let salt = SaltString::generate(&mut OsRng);
 
             let key1 = crypto_manager.derive_key(&secure_password, &salt).unwrap();
             let key2 = crypto_manager.derive_key(&secure_password, &salt).unwrap();
@@ -829,7 +829,7 @@ mod tests {
     fn test_nonce_uniqueness() {
         let crypto_manager = CryptoManager::new();
         let password = SecurePassword::new("TestPassword123!@#".to_string());
-        let salt = argon2::password_hash::SaltString::generate(&mut rand::rngs::OsRng);
+        let salt = SaltString::generate(&mut OsRng);
         let key = crypto_manager.derive_key(&password, &salt).unwrap();
 
         let mut nonces = HashSet::new();

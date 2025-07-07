@@ -17,7 +17,7 @@ import {
   IconDots
 } from '@tabler/icons-react';
 import debounce from 'lodash.debounce';
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 import { useTheme } from '../hooks/useTheme';
 import type { CreateNoteResult, SaveNoteResult, Note } from '../types';
