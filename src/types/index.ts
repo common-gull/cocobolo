@@ -62,29 +62,6 @@ export interface UpdateVaultMetadataRequest {
   is_favorite?: boolean;
 }
 
-export interface AppConfig {
-  // Legacy field for backward compatibility
-  vault_location?: string;
-  // New multi-vault fields
-  current_vault_id?: string;
-  known_vaults: KnownVault[];
-  theme: 'light' | 'dark' | 'system';
-  auto_save_interval: number;
-  show_markdown_preview: boolean;
-  window_maximized: boolean;
-  window_width?: number;
-  window_height?: number;
-  recent_vault_ids: string[];
-  max_recent_vaults: number;
-}
-
-export interface VaultSelectionState {
-  selectedPath: string | null;
-  isValidating: boolean;
-  validationResult: VaultLocationInfo | null;
-  error: string | null;
-}
-
 export interface PasswordStrength {
   is_valid: boolean;
   score: number; // 0-4 strength score
@@ -96,18 +73,6 @@ export interface VaultSetupInfo {
   needs_password: boolean;
   is_encrypted: boolean;
   vault_info?: VaultInfo;
-}
-
-export interface PasswordSetupState {
-  password: string;
-  confirmPassword: string;
-  vaultName: string;
-  passwordStrength: PasswordStrength | null;
-  isValidating: boolean;
-  isCreating: boolean;
-  error: string | null;
-  showPassword: boolean;
-  showConfirmPassword: boolean;
 }
 
 export interface VaultPasswordSetupState {
@@ -140,8 +105,6 @@ export interface VaultUnlockState {
   rateLimitInfo: RateLimitInfo | null;
 }
 
-export type AppView = 'home' | 'vault-creator' | 'vault-unlock' | 'main-app' | 'create-note' | 'notes-list' | 'edit-note' | 'create-whiteboard' | 'edit-whiteboard';
-
 // Note types
 export type NoteType = 'text' | 'whiteboard';
 
@@ -172,30 +135,6 @@ export interface CreateNoteResult {
   success: boolean;
   note?: Note;
   error_message?: string;
-}
-
-export interface NotesIndex {
-  notes: NoteMetadata[];
-  last_updated: string;
-}
-
-// Markdown Editor types
-export interface EditorState {
-  content: string;
-  isDirty: boolean;
-  isSaving: boolean;
-  lastSaved: Date | null;
-  saveError: string | null;
-}
-
-export interface EditorSettings {
-  theme: 'light' | 'dark' | 'auto';
-  showPreview: boolean;
-  enableVim: boolean;
-  fontSize: number;
-  tabSize: number;
-  autoSave: boolean;
-  autoSaveInterval: number; // in milliseconds
 }
 
 export interface SaveNoteResult {

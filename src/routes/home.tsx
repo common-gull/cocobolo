@@ -20,7 +20,7 @@ import {
   IconCheck
 } from '@tabler/icons-react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { 
   appLoadingAtom, 

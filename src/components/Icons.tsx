@@ -125,5 +125,3 @@ export const Icons = {
   whiteboard: createIcon(IconPencil),
   edit: createIcon(IconEdit),
 } as const;
-
-export type IconName = keyof typeof Icons; 

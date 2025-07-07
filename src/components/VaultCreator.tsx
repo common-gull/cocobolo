@@ -27,7 +27,7 @@ import {
   IconX,
   IconInfoCircle
 } from '@tabler/icons-react';
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 
 import type { VaultPasswordSetupState, VaultInfo, VaultLocationInfo } from '../types';

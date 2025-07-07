@@ -4,8 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import type { 
   AppInfo, 
   VaultLocationInfo, 
-  AppConfig, 
-  PasswordStrength, 
+  PasswordStrength,
   VaultSetupInfo, 
   VaultInfo,
   VaultUnlockResult,
@@ -71,27 +70,11 @@ export const api = {
     }
   },
 
-  async setVaultLocation(path: string): Promise<void> {
-    try {
-      await invoke<void>('set_vault_location', { path });
-    } catch (error) {
-      throw new ApiError('Failed to set vault location', error);
-    }
-  },
-
   async getCurrentVaultLocation(): Promise<string | null> {
     try {
       return await invoke<string | null>('get_current_vault_location');
     } catch (error) {
       throw new ApiError('Failed to get current vault location', error);
-    }
-  },
-
-  async getAppConfig(): Promise<AppConfig> {
-    try {
-      return await invoke<AppConfig>('get_app_config');
-    } catch (error) {
-      throw new ApiError('Failed to get app config', error);
     }
   },
 

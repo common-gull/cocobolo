@@ -1,7 +1,7 @@
-import { atom } from 'jotai';
-import { atomWithStorage } from 'jotai/utils';
+import {atom} from 'jotai';
+import {atomWithStorage} from 'jotai/utils';
 
-import type { NoteMetadata, VaultInfo } from '../types';
+import type {NoteMetadata, VaultInfo} from '../types';
 
 // Theme atoms (migrated from ThemeContext)
 export type Theme = 'light' | 'dark' | 'system';
@@ -27,10 +27,6 @@ export const vaultPathAtom = atom<string | null>(null);
 // Vault location atoms (migrating from useVaultLocation hook)
 export const currentVaultLocationAtom = atom<string | null>(null);
 export const vaultConfigLoadingAtom = atom<boolean>(true);
-export const selectedVaultPathAtom = atom<string | null>(null);
-export const vaultValidationLoadingAtom = atom<boolean>(false);
-export const vaultValidationResultAtom = atom<any>(null);
-export const vaultLocationErrorAtom = atom<string | null>(null);
 
 // Common UI state atoms
 export const appLoadingAtom = atom<boolean>(false);
@@ -43,32 +39,12 @@ export const notesLoadingAtom = atom<boolean>(false);
 export const notesErrorAtom = atom<string | null>(null);
 export const selectedNoteIdAtom = atom<string | null>(null);
 
-// Derived atoms
-export const notesWithFoldersAtom = atom((get) => {
-  const notes = get(notesAtom);
-  const folders = get(foldersAtom);
-  return { notes, folders };
-});
-
 export const hasVaultSessionAtom = atom((get) => {
   const sessionId = get(sessionIdAtom);
   const vaultInfo = get(vaultInfoAtom);
   const vaultPath = get(vaultPathAtom);
-  
-  const hasSession = !!(sessionId && vaultInfo && vaultPath);
-  
-  return hasSession;
-});
 
-export const vaultLocationChangesAtom = atom((get) => {
-  const currentLocation = get(currentVaultLocationAtom);
-  const selectedPath = get(selectedVaultPathAtom);
-  
-  return {
-    currentLocation,
-    isSet: !!selectedPath,
-    hasChanged: !!selectedPath && selectedPath !== currentLocation
-  };
+  return !!(sessionId && vaultInfo && vaultPath);
 });
 
 // Action atoms for notes (existing)
@@ -97,27 +73,6 @@ export const removeNoteAtom = atom(
     const currentNotes = get(notesAtom);
     const filteredNotes = currentNotes.filter(note => note.id !== noteId);
     set(notesAtom, filteredNotes);
-  }
-);
-
-export const deleteNoteAtom = atom(
-  null,
-  async (get, set, { vaultPath, sessionId, noteId }: { vaultPath: string; sessionId: string; noteId: string }) => {
-    try {
-      const { api } = await import('../utils/api');
-      const success = await api.deleteNote(vaultPath, sessionId, noteId);
-      
-      if (success) {
-        const currentNotes = get(notesAtom);
-        const filteredNotes = currentNotes.filter(note => note.id !== noteId);
-        set(notesAtom, filteredNotes);
-      }
-      
-      return success;
-    } catch (error) {
-      console.error('Failed to delete note:', error);
-      return false;
-    }
   }
 );
 
@@ -278,51 +233,3 @@ export const clearVaultSessionAtom = atom(
     }
   }
 );
-
-// Action atoms for vault location management
-export const validateVaultLocationAtom = atom(
-  null,
-  async (_get, set, path: string) => {
-    try {
-      set(selectedVaultPathAtom, path);
-      set(vaultValidationLoadingAtom, true);
-      set(vaultValidationResultAtom, null);
-      set(vaultLocationErrorAtom, null);
-
-      const { api } = await import('../utils/api');
-      const validationResult = await api.validateVaultLocation(path);
-      
-      set(vaultValidationResultAtom, validationResult);
-      set(vaultValidationLoadingAtom, false);
-    } catch (error) {
-      set(vaultValidationLoadingAtom, false);
-      set(vaultLocationErrorAtom, error instanceof Error ? error.message : 'Unknown error');
-    }
-  }
-);
-
-export const confirmVaultLocationAtom = atom(
-  null,
-  async (get, set) => {
-    const selectedPath = get(selectedVaultPathAtom);
-    const validationResult = get(vaultValidationResultAtom);
-    
-    if (!selectedPath || !validationResult?.is_valid) {
-      return false;
-    }
-
-    try {
-      set(vaultLocationErrorAtom, null);
-      
-      const { api } = await import('../utils/api');
-      await api.setVaultLocation(selectedPath);
-      set(currentVaultLocationAtom, selectedPath);
-      set(vaultValidationResultAtom, null);
-      
-      return true;
-    } catch (error) {
-      set(vaultLocationErrorAtom, error instanceof Error ? error.message : 'Unknown error');
-      return false;
-    }
-  }
-); 

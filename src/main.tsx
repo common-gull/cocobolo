@@ -7,7 +7,6 @@ import { createBrowserRouter, RouterProvider } from "react-router";
 import App from './routes/app';
 import AppLayout from './routes/app-layout';
 import Document from './routes/document';
-import Home from './routes/home';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import '@mantine/spotlight/styles.css';
@@ -43,11 +42,6 @@ const router = createBrowserRouter([
         index: true,
         Component: VaultSelector,
         errorElement: <ErrorBoundary error={new Error("Vault selector error")} />,
-      },
-      {
-        path: "home",
-        Component: Home,
-        errorElement: <ErrorBoundary error={new Error("Home error")} />,
       },
       {
         path: "vault-creator",
