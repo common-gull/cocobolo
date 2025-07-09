@@ -17,6 +17,7 @@ import {Button, Group, Menu, Modal, rem, Text} from '@mantine/core';
 import {IconTrash} from '@tabler/icons-react';
 import {useAtomValue, useSetAtom} from 'jotai';
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import { useNavigate } from 'react-router';
 
 import {
   addFolderAtom,
@@ -321,6 +322,8 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
   onCreateNote,
   onCreateWhiteboard
 }: DraggableTreeNotesListProps) {
+  const navigate = useNavigate();
+  
   // Jotai state
   const notes = useAtomValue(notesAtom);
   const folders = useAtomValue(foldersAtom);
@@ -346,7 +349,8 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
     x: number;
     y: number;
     type: 'folder' | 'note';
-    target: string;
+    target: string;           // path for folder, id for note
+    targetFolder?: string;    // folder path for creation context
   }>({
     opened: false,
     x: 0,
@@ -577,13 +581,19 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
 
   const handleContextMenu = (e: React.MouseEvent, type: 'folder' | 'note', target: string) => {
     e.preventDefault();
-    setContextMenu({
+    const contextMenuState: typeof contextMenu = {
       opened: true,
       x: e.clientX,
       y: e.clientY,
       type,
-      target
-    });
+      target,
+    };
+    
+    if (type === 'folder') {
+      contextMenuState.targetFolder = target;
+    }
+    
+    setContextMenu(contextMenuState);
   };
 
   const handleContextMenuDelete = () => {
@@ -597,6 +607,117 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
   const handleContextMenuRename = () => {
     if (contextMenu.type === 'folder') {
       handleStartRename(contextMenu.target);
+    }
+  };
+
+  const handleContextMenuAddSubfolder = async () => {
+    if (contextMenu.type !== 'folder' || contextMenu.targetFolder === undefined) return;
+    
+    setContextMenu(prev => ({ ...prev, opened: false }));
+    
+    const parentPath = contextMenu.targetFolder;
+    const baseName = 'New Folder';
+    
+    const existingFolders = parentPath 
+      ? folders.filter(f => f.startsWith(`${parentPath}/`) && f.split('/').length === parentPath.split('/').length + 1)
+      : folders.filter(f => !f.includes('/'));
+    
+    let uniqueName = baseName;
+    let counter = 1;
+    
+    const expectedPath = parentPath ? `${parentPath}/${uniqueName}` : uniqueName;
+    while (existingFolders.some(f => f === expectedPath)) {
+      uniqueName = `${baseName} (${counter})`;
+      counter++;
+    }
+    
+    const fullPath = parentPath ? `${parentPath}/${uniqueName}` : uniqueName;
+    
+    try {
+      await api.createFolder(vaultPath, sessionId, fullPath);
+      addFolder(fullPath);
+      
+      if (parentPath) {
+        expandFolder(parentPath);
+      }
+      
+      setEditingFolder(fullPath);
+      setEditingName(uniqueName);
+    } catch (error) {
+      console.error('Failed to create subfolder:', error);
+      alert('Failed to create subfolder. Please try again.');
+    }
+  };
+
+  const handleContextMenuAddNote = async () => {
+    if (contextMenu.type !== 'folder' || !contextMenu.targetFolder) return;
+    
+    setContextMenu(prev => ({ ...prev, opened: false }));
+    
+    try {
+      const result = await api.createNote(
+        vaultPath,
+        sessionId,
+        'Untitled',
+        '',
+        [],
+        contextMenu.targetFolder || undefined,
+        'text'
+      );
+      
+      if (result.success && result.note) {
+        // Expand the parent folder if needed
+        if (contextMenu.targetFolder) {
+          expandFolder(contextMenu.targetFolder);
+        }
+        
+        // Reload notes to update the tree
+        loadNotes({ vaultPath, sessionId });
+        
+        // Navigate to the new note for editing
+        navigate(`/documents/${result.note.id}`);
+      } else {
+        alert(result.error_message || 'Failed to create note. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to create note:', error);
+      alert('Failed to create note. Please try again.');
+    }
+  };
+
+  const handleContextMenuAddWhiteboard = async () => {
+    if (contextMenu.type !== 'folder' || !contextMenu.targetFolder) return;
+    
+    setContextMenu(prev => ({ ...prev, opened: false }));
+    
+    try {
+      const result = await api.createNote(
+        vaultPath,
+        sessionId,
+        'Untitled Whiteboard',
+        '',
+        [],
+        contextMenu.targetFolder || undefined,
+        'whiteboard'
+      );
+      
+      if (result.success && result.note) {
+        // Expand the parent folder if needed
+        if (contextMenu.targetFolder) {
+          expandFolder(contextMenu.targetFolder);
+        }
+        
+        // Reload notes to update the tree
+        loadNotes({ vaultPath, sessionId });
+        
+        // Navigate to the new whiteboard for editing
+        navigate(`/documents/${result.note.id}`);
+      } else {
+        alert(result.error_message || 'Failed to create whiteboard. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to create whiteboard:', error);
+      alert('Failed to create whiteboard. Please try again.');
     }
   };
 
@@ -911,12 +1032,33 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
           </Menu.Target>
           <Menu.Dropdown>
             {contextMenu.type === 'folder' && (
-              <Menu.Item
-                leftSection={<Icons.edit style={{ width: rem(14), height: rem(14) }} />}
-                onClick={handleContextMenuRename}
-              >
-                Rename Folder
-              </Menu.Item>
+              <>
+                <Menu.Item
+                  leftSection={<Icons.folderPlus style={{ width: rem(14), height: rem(14) }} />}
+                  onClick={handleContextMenuAddSubfolder}
+                >
+                  Add Subfolder
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<Icons.filePlus style={{ width: rem(14), height: rem(14) }} />}
+                  onClick={handleContextMenuAddNote}
+                >
+                  Add New Note
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<Icons.whiteboard style={{ width: rem(14), height: rem(14) }} />}
+                  onClick={handleContextMenuAddWhiteboard}
+                >
+                  Add New Whiteboard
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  leftSection={<Icons.edit style={{ width: rem(14), height: rem(14) }} />}
+                  onClick={handleContextMenuRename}
+                >
+                  Rename Folder
+                </Menu.Item>
+              </>
             )}
             <Menu.Item
               color="red"
