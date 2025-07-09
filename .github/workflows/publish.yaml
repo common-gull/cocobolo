@@ -32,10 +32,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
             libgtk-3-dev \
             libglib2.0-dev \
             libgdk-pixbuf-2.0-dev \
@@ -44,13 +40,15 @@ jobs:
             libcairo-gobject2 \
             libsoup2.4-dev \
             libjavascriptcoregtk-4.1-dev \
+            libwebkit2gtk-4.1-dev \
             pkg-config \
             build-essential \
             curl \
             wget \
             file \
             libssl-dev \
-            libayatana-appindicator3-dev
+            libayatana-appindicator3-dev \
+            librsvg2-dev
 
       - name: setup node
         uses: actions/setup-node@v4
