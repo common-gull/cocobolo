@@ -14,6 +14,7 @@ import {
 } from '@dnd-kit/core';
 import {CSS} from '@dnd-kit/utilities';
 import {Button, Group, Menu, Modal, rem, Text} from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import {IconTrash} from '@tabler/icons-react';
 import {useAtomValue, useSetAtom} from 'jotai';
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
@@ -258,7 +259,7 @@ const DraggableNote = React.memo(function DraggableNote({
   level, 
   selectedNoteId, 
   onSelectNote, 
-  onContextMenu 
+  onContextMenu
 }: {
   note: NoteMetadata;
   level: number;
@@ -342,6 +343,8 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
   // Editing state for folder names
   const [editingFolder, setEditingFolder] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string>('');
+
+
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -537,7 +540,12 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
       }
     } catch (error) {
       console.error('Failed to create folder:', error);
-      alert('Failed to create folder. Please try again.');
+      notifications.show({
+        title: 'Failed to create folder',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        color: 'red',
+        icon: <Icons.warning size="sm" />
+      });
     }
   };
 
@@ -563,11 +571,21 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
       if (success) {
         loadNotes({ vaultPath, sessionId });
       } else {
-        alert('Failed to rename folder. Please try again.');
+        notifications.show({
+          title: 'Failed to rename folder',
+          message: 'The operation was not successful. Please try again.',
+          color: 'red',
+          icon: <Icons.warning size="sm" />
+        });
       }
     } catch (error) {
       console.error('Failed to rename folder:', error);
-      alert('Failed to rename folder. Please try again.');
+      notifications.show({
+        title: 'Failed to rename folder',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        color: 'red',
+        icon: <Icons.warning size="sm" />
+      });
     } finally {
       setEditingFolder(null);
       setEditingName('');
@@ -578,6 +596,8 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
     setEditingFolder(null);
     setEditingName('');
   };
+
+
 
   const handleContextMenu = (e: React.MouseEvent, type: 'folder' | 'note', target: string) => {
     e.preventDefault();
@@ -625,9 +645,10 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
     let uniqueName = baseName;
     let counter = 1;
     
-    const expectedPath = parentPath ? `${parentPath}/${uniqueName}` : uniqueName;
+    let expectedPath = parentPath ? `${parentPath}/${uniqueName}` : uniqueName;
     while (existingFolders.some(f => f === expectedPath)) {
       uniqueName = `${baseName} (${counter})`;
+      expectedPath = parentPath ? `${parentPath}/${uniqueName}` : uniqueName;
       counter++;
     }
     
@@ -645,7 +666,12 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
       setEditingName(uniqueName);
     } catch (error) {
       console.error('Failed to create subfolder:', error);
-      alert('Failed to create subfolder. Please try again.');
+      notifications.show({
+        title: 'Failed to create subfolder',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        color: 'red',
+        icon: <Icons.warning size="sm" />
+      });
     }
   };
 
@@ -677,11 +703,21 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
         // Navigate to the new note for editing
         navigate(`/documents/${result.note.id}`);
       } else {
-        alert(result.error_message || 'Failed to create note. Please try again.');
+        notifications.show({
+          title: 'Failed to create note',
+          message: result.error_message || 'An unexpected error occurred',
+          color: 'red',
+          icon: <Icons.warning size="sm" />
+        });
       }
     } catch (error) {
       console.error('Failed to create note:', error);
-      alert('Failed to create note. Please try again.');
+      notifications.show({
+        title: 'Failed to create note',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        color: 'red',
+        icon: <Icons.warning size="sm" />
+      });
     }
   };
 
@@ -713,11 +749,21 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
         // Navigate to the new whiteboard for editing
         navigate(`/documents/${result.note.id}`);
       } else {
-        alert(result.error_message || 'Failed to create whiteboard. Please try again.');
+        notifications.show({
+          title: 'Failed to create whiteboard',
+          message: result.error_message || 'An unexpected error occurred',
+          color: 'red',
+          icon: <Icons.warning size="sm" />
+        });
       }
     } catch (error) {
       console.error('Failed to create whiteboard:', error);
-      alert('Failed to create whiteboard. Please try again.');
+      notifications.show({
+        title: 'Failed to create whiteboard',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        color: 'red',
+        icon: <Icons.warning size="sm" />
+      });
     }
   };
 
@@ -739,12 +785,22 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
       if (type === 'folder') {
         success = await api.deleteFolder(vaultPath, sessionId, target);
         if (!success) {
-          alert('Failed to delete folder. The folder may contain notes or subfolders.');
+          notifications.show({
+            title: 'Failed to delete folder',
+            message: 'The folder may contain notes or subfolders that need to be removed first.',
+            color: 'red',
+            icon: <Icons.warning size="sm" />
+          });
         }
       } else {
         success = await api.deleteNote(vaultPath, sessionId, target);
         if (!success) {
-          alert('Failed to delete note. Please try again.');
+          notifications.show({
+            title: 'Failed to delete note',
+            message: 'The operation was not successful. Please try again.',
+            color: 'red',
+            icon: <Icons.warning size="sm" />
+          });
         }
       }
 
@@ -753,7 +809,12 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
       }
     } catch (error) {
       console.error(`Failed to delete ${type}:`, error);
-      alert(`Failed to delete ${type}. Please try again.`);
+      notifications.show({
+        title: `Failed to delete ${type}`,
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        color: 'red',
+        icon: <Icons.warning size="sm" />
+      });
     }
   };
 
@@ -824,7 +885,12 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
           }
           loadNotes({ vaultPath, sessionId });
         } else {
-          alert('Failed to move note. Please try again.');
+          notifications.show({
+            title: 'Failed to move note',
+            message: 'The operation was not successful. Please try again.',
+            color: 'red',
+            icon: <Icons.warning size="sm" />
+          });
         }
       } else if (dragItem.type === 'folder') {
         // Moving a folder
@@ -843,7 +909,12 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
           
           // Prevent moving a folder into itself or its descendants
           if (newPath.startsWith(dragItem.folderPath + '/') || newPath === dragItem.folderPath) {
-            alert('Cannot move a folder into itself or its descendants.');
+            notifications.show({
+              title: 'Invalid move operation',
+              message: 'Cannot move a folder into itself or its descendants.',
+              color: 'orange',
+              icon: <Icons.warning size="sm" />
+            });
             return;
           }
           
@@ -861,13 +932,23 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
             }
             loadNotes({ vaultPath, sessionId });
           } else {
-            alert('Failed to move folder. Please try again.');
+            notifications.show({
+              title: 'Failed to move folder',
+              message: 'The operation was not successful. Please try again.',
+              color: 'red',
+              icon: <Icons.warning size="sm" />
+            });
           }
         }
       }
     } catch (error) {
       console.error('Failed to move item:', error);
-      alert('Failed to move item. Please try again.');
+      notifications.show({
+        title: 'Failed to move item',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        color: 'red',
+        icon: <Icons.warning size="sm" />
+      });
     }
   };
 
