@@ -82,6 +82,10 @@ The mocks provide realistic test data including:
 - **`vault-selector.spec.ts`** - Tests vault selection and creation
 - **`vault-unlock.spec.ts`** - Tests vault unlocking and authentication
 - **`notes-management.spec.ts`** - Tests note CRUD operations
+- **`context-menu-folders.spec.ts`** - Tests folder-specific context menu behavior
+- **`context-menu-creation.spec.ts`** - Tests item creation via context menu
+- **`tree-state-preservation.spec.ts`** - Tests tree state management and preservation
+- **`context-menu-error-handling.spec.ts`** - Tests error handling in context menu operations
 
 ### Test Helpers
 

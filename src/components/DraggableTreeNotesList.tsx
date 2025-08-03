@@ -27,7 +27,8 @@ import {
   loadNotesAtom,
   notesAtom,
   notesErrorAtom,
-  notesLoadingAtom
+  notesLoadingAtom,
+  addNoteAtom
 } from '../stores/notesStore';
 import type {NoteMetadata} from '../types';
 import {api} from '../utils/api';
@@ -332,6 +333,7 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
   const error = useAtomValue(notesErrorAtom);
   const loadNotes = useSetAtom(loadNotesAtom);
   const addFolder = useSetAtom(addFolderAtom);
+  const addNote = useSetAtom(addNoteAtom);
   const generateUniquefolderName = useAtomValue(generateUniquefolderNameAtom);
 
   // Local state
@@ -697,11 +699,24 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
           expandFolder(contextMenu.targetFolder);
         }
         
-        // Reload notes to update the tree
-        loadNotes({ vaultPath, sessionId });
+        // Add the note to the store immediately to prevent race condition
+        const noteMetadata: NoteMetadata = {
+          id: result.note.id,
+          title: result.note.title,
+          note_type: result.note.note_type,
+          content_preview: result.note.content.substring(0, 100),
+          created_at: result.note.created_at,
+          updated_at: result.note.updated_at,
+          tags: result.note.tags,
+          ...(result.note.folder_path && { folder_path: result.note.folder_path })
+        };
+        addNote(noteMetadata);
         
-        // Navigate to the new note for editing
+        // Navigate to the new note for editing - note is now in store
         navigate(`/documents/${result.note.id}`);
+        
+        // Reload notes to ensure consistency (async, doesn't block navigation)
+        loadNotes({ vaultPath, sessionId });
       } else {
         notifications.show({
           title: 'Failed to create note',
@@ -743,11 +758,24 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
           expandFolder(contextMenu.targetFolder);
         }
         
-        // Reload notes to update the tree
-        loadNotes({ vaultPath, sessionId });
+        // Add the note to the store immediately to prevent race condition
+        const noteMetadata: NoteMetadata = {
+          id: result.note.id,
+          title: result.note.title,
+          note_type: result.note.note_type,
+          content_preview: result.note.content.substring(0, 100),
+          created_at: result.note.created_at,
+          updated_at: result.note.updated_at,
+          tags: result.note.tags,
+          ...(result.note.folder_path && { folder_path: result.note.folder_path })
+        };
+        addNote(noteMetadata);
         
-        // Navigate to the new whiteboard for editing
+        // Navigate to the new whiteboard for editing - note is now in store
         navigate(`/documents/${result.note.id}`);
+        
+        // Reload notes to ensure consistency (async, doesn't block navigation)
+        loadNotes({ vaultPath, sessionId });
       } else {
         notifications.show({
           title: 'Failed to create whiteboard',

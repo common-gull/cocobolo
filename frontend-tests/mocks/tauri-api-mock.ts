@@ -486,9 +486,19 @@ export async function setupTauriMocks(page: Page) {
             throw new Error('Invalid session');
           }
           
-          const folderName = args?.folderName || args?.name;
-          if (folderName && !mockState.folders.includes(folderName)) {
-            mockState.folders.push(folderName);
+          const folderPath = args?.folderPath || args?.folderName || args?.name;
+          if (folderPath && !mockState.folders.includes(folderPath)) {
+            // Add the folder path (e.g., "To Delete/Child")
+            mockState.folders.push(folderPath);
+            
+            // Ensure parent folders exist (like the real backend)
+            const parts = folderPath.split('/');
+            for (let i = 1; i < parts.length; i++) {
+              const parentPath = parts.slice(0, i).join('/');
+              if (!mockState.folders.includes(parentPath)) {
+                mockState.folders.push(parentPath);
+              }
+            }
           }
           return true;
 
@@ -521,6 +531,37 @@ export async function setupTauriMocks(page: Page) {
               (note as any).folder_path = newName;
             }
           });
+          
+          return true;
+
+        case 'delete_folder':
+          if (args?.sessionId !== mockState.currentSession) {
+            throw new Error('Invalid session');
+          }
+          
+          const folderPathToDelete = args?.folderPath;
+          
+          if (!folderPathToDelete) {
+            return false;
+          }
+          
+          // Check if any notes are in this folder or subfolders (like the real backend)
+          const hasNotes = mockState.notes.some(note => {
+            const folderPath = (note as any).folder_path;
+            return folderPath && (
+              folderPath === folderPathToDelete || 
+              folderPath.startsWith(folderPathToDelete + '/')
+            );
+          });
+          
+          if (hasNotes) {
+            return false; // Cannot delete folder that contains notes
+          }
+          
+          // Remove folder and all subfolders from folders list
+          mockState.folders = mockState.folders.filter(f => 
+            f !== folderPathToDelete && !f.startsWith(folderPathToDelete + '/')
+          );
           
           return true;
 
