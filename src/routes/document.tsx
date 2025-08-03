@@ -42,11 +42,15 @@ export default function Document() {
   
   const [note, setNote] = useState<Note | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoadingNote, setIsLoadingNote] = useState(false);
 
   // State management hooks
   const notes = useAtomValue(notesAtom);
   const updateNote = useSetAtom(updateNoteAtom);
   const removeNote = useSetAtom(removeNoteAtom);
+
+  // Check if note exists in store
+  const noteExistsInStore = noteId ? notes.some(n => n.id === noteId) : false;
 
   // Check if note still exists and navigate back if it doesn't
   useEffect(() => {
@@ -55,11 +59,31 @@ export default function Document() {
     // Check if the note exists in the current notes state
     const noteExists = notes.some(note => note.id === noteId);
     
-    // If notes array is not empty and the note doesn't exist, navigate back
+    // If we have notes loaded and the note doesn't exist in the store
     if (notes.length > 0 && !noteExists) {
-      navigate('/app', { replace: true });
+      // If we have an error loading the note, it definitely doesn't exist
+      if (error) {
+        navigate('/app', { replace: true });
+        return;
+      }
+      
+      // If we have a note loaded but it's for a different ID, the requested note doesn't exist
+      if (note && note.id !== noteId) {
+        navigate('/app', { replace: true });
+        return;
+      }
+      
+      // If we have a note loaded for the current ID but it's not in the store,
+      // it was likely deleted, so navigate away
+      if (note && note.id === noteId) {
+        navigate('/app', { replace: true });
+        return;
+      }
+      
+      // Otherwise, the note might be newly created and not in store yet
+      // Let the loading process below handle it
     }
-  }, [noteId, notes, navigate]);
+  }, [noteId, notes, navigate, error, note]);
 
   // Note update handler
   const handleNoteUpdated = useCallback((updatedNote: Note) => {
@@ -87,11 +111,14 @@ export default function Document() {
 
     const loadNote = async () => {
       try {
+        setIsLoadingNote(true);
         setError(null);
         const loadedNote = await api.loadNote(vaultPath, sessionId, noteId);
         setNote(loadedNote);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load note');
+      } finally {
+        setIsLoadingNote(false);
       }
     };
 
@@ -122,6 +149,19 @@ export default function Document() {
     );
   }
 
+  // Show loading if we're fetching the note or if the note exists in store but we haven't loaded it yet
+  if (!note && (isLoadingNote || noteExistsInStore)) {
+    return (
+      <Center h="100%">
+        <Stack align="center" gap="md">
+          <Loader size="lg" />
+          <Text>Loading note...</Text>
+        </Stack>
+      </Center>
+    );
+  }
+
+  // Only show "Note Not Found" if we've tried to load it and have no note and it's not in the store
   if (!note) {
     return (
       <Container size="sm" mt="xl">

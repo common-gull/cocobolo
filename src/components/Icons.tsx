@@ -13,6 +13,7 @@ import {
   IconFolder,
   IconFolderPlus,
   IconFileText,
+  IconFilePlus,
   
   // Security & Authentication
   IconLock,
@@ -37,8 +38,8 @@ import {
   // Content & Editor
   IconBulb,
   IconTrash,
-  IconPencil,
   IconEdit,
+  IconBrush,
   
 } from '@tabler/icons-react';
 import React from 'react';
@@ -98,6 +99,7 @@ export const Icons = {
   folder: createIcon(IconFolder),
   folderPlus: createIcon(IconFolderPlus),
   fileText: createIcon(IconFileText),
+  filePlus: createIcon(IconFilePlus),
   
   // Security & Authentication
   lock: createIcon(IconLock),
@@ -122,6 +124,6 @@ export const Icons = {
   // Content & Editor
   lightbulb: createIcon(IconBulb),
   trash: createIcon(IconTrash),
-  whiteboard: createIcon(IconPencil),
+  whiteboard: createIcon(IconBrush),
   edit: createIcon(IconEdit),
 } as const;

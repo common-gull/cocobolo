@@ -14,9 +14,11 @@ import {
 } from '@dnd-kit/core';
 import {CSS} from '@dnd-kit/utilities';
 import {Button, Group, Menu, Modal, rem, Text} from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import {IconTrash} from '@tabler/icons-react';
 import {useAtomValue, useSetAtom} from 'jotai';
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import { useNavigate } from 'react-router';
 
 import {
   addFolderAtom,
@@ -25,7 +27,8 @@ import {
   loadNotesAtom,
   notesAtom,
   notesErrorAtom,
-  notesLoadingAtom
+  notesLoadingAtom,
+  addNoteAtom
 } from '../stores/notesStore';
 import type {NoteMetadata} from '../types';
 import {api} from '../utils/api';
@@ -257,7 +260,7 @@ const DraggableNote = React.memo(function DraggableNote({
   level, 
   selectedNoteId, 
   onSelectNote, 
-  onContextMenu 
+  onContextMenu
 }: {
   note: NoteMetadata;
   level: number;
@@ -321,6 +324,8 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
   onCreateNote,
   onCreateWhiteboard
 }: DraggableTreeNotesListProps) {
+  const navigate = useNavigate();
+  
   // Jotai state
   const notes = useAtomValue(notesAtom);
   const folders = useAtomValue(foldersAtom);
@@ -328,6 +333,7 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
   const error = useAtomValue(notesErrorAtom);
   const loadNotes = useSetAtom(loadNotesAtom);
   const addFolder = useSetAtom(addFolderAtom);
+  const addNote = useSetAtom(addNoteAtom);
   const generateUniquefolderName = useAtomValue(generateUniquefolderNameAtom);
 
   // Local state
@@ -340,13 +346,16 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
   const [editingFolder, setEditingFolder] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string>('');
 
+
+
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
     opened: boolean;
     x: number;
     y: number;
     type: 'folder' | 'note';
-    target: string;
+    target: string;           // path for folder, id for note
+    targetFolder?: string;    // folder path for creation context
   }>({
     opened: false,
     x: 0,
@@ -533,7 +542,12 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
       }
     } catch (error) {
       console.error('Failed to create folder:', error);
-      alert('Failed to create folder. Please try again.');
+      notifications.show({
+        title: 'Failed to create folder',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        color: 'red',
+        icon: <Icons.warning size="sm" />
+      });
     }
   };
 
@@ -559,11 +573,21 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
       if (success) {
         loadNotes({ vaultPath, sessionId });
       } else {
-        alert('Failed to rename folder. Please try again.');
+        notifications.show({
+          title: 'Failed to rename folder',
+          message: 'The operation was not successful. Please try again.',
+          color: 'red',
+          icon: <Icons.warning size="sm" />
+        });
       }
     } catch (error) {
       console.error('Failed to rename folder:', error);
-      alert('Failed to rename folder. Please try again.');
+      notifications.show({
+        title: 'Failed to rename folder',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        color: 'red',
+        icon: <Icons.warning size="sm" />
+      });
     } finally {
       setEditingFolder(null);
       setEditingName('');
@@ -575,15 +599,23 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
     setEditingName('');
   };
 
+
+
   const handleContextMenu = (e: React.MouseEvent, type: 'folder' | 'note', target: string) => {
     e.preventDefault();
-    setContextMenu({
+    const contextMenuState: typeof contextMenu = {
       opened: true,
       x: e.clientX,
       y: e.clientY,
       type,
-      target
-    });
+      target,
+    };
+    
+    if (type === 'folder') {
+      contextMenuState.targetFolder = target;
+    }
+    
+    setContextMenu(contextMenuState);
   };
 
   const handleContextMenuDelete = () => {
@@ -597,6 +629,169 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
   const handleContextMenuRename = () => {
     if (contextMenu.type === 'folder') {
       handleStartRename(contextMenu.target);
+    }
+  };
+
+  const handleContextMenuAddSubfolder = async () => {
+    if (contextMenu.type !== 'folder' || contextMenu.targetFolder === undefined) return;
+    
+    setContextMenu(prev => ({ ...prev, opened: false }));
+    
+    const parentPath = contextMenu.targetFolder;
+    const baseName = 'New Folder';
+    
+    const existingFolders = parentPath 
+      ? folders.filter(f => f.startsWith(`${parentPath}/`) && f.split('/').length === parentPath.split('/').length + 1)
+      : folders.filter(f => !f.includes('/'));
+    
+    let uniqueName = baseName;
+    let counter = 1;
+    
+    let expectedPath = parentPath ? `${parentPath}/${uniqueName}` : uniqueName;
+    while (existingFolders.some(f => f === expectedPath)) {
+      uniqueName = `${baseName} (${counter})`;
+      expectedPath = parentPath ? `${parentPath}/${uniqueName}` : uniqueName;
+      counter++;
+    }
+    
+    const fullPath = parentPath ? `${parentPath}/${uniqueName}` : uniqueName;
+    
+    try {
+      await api.createFolder(vaultPath, sessionId, fullPath);
+      addFolder(fullPath);
+      
+      if (parentPath) {
+        expandFolder(parentPath);
+      }
+      
+      setEditingFolder(fullPath);
+      setEditingName(uniqueName);
+    } catch (error) {
+      console.error('Failed to create subfolder:', error);
+      notifications.show({
+        title: 'Failed to create subfolder',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        color: 'red',
+        icon: <Icons.warning size="sm" />
+      });
+    }
+  };
+
+  const handleContextMenuAddNote = async () => {
+    if (contextMenu.type !== 'folder' || !contextMenu.targetFolder) return;
+    
+    setContextMenu(prev => ({ ...prev, opened: false }));
+    
+    try {
+      const result = await api.createNote(
+        vaultPath,
+        sessionId,
+        'Untitled',
+        '',
+        [],
+        contextMenu.targetFolder || undefined,
+        'text'
+      );
+      
+      if (result.success && result.note) {
+        // Expand the parent folder if needed
+        if (contextMenu.targetFolder) {
+          expandFolder(contextMenu.targetFolder);
+        }
+        
+        // Add the note to the store immediately to prevent race condition
+        const noteMetadata: NoteMetadata = {
+          id: result.note.id,
+          title: result.note.title,
+          note_type: result.note.note_type,
+          content_preview: result.note.content.substring(0, 100),
+          created_at: result.note.created_at,
+          updated_at: result.note.updated_at,
+          tags: result.note.tags,
+          ...(result.note.folder_path && { folder_path: result.note.folder_path })
+        };
+        addNote(noteMetadata);
+        
+        // Navigate to the new note for editing - note is now in store
+        navigate(`/documents/${result.note.id}`);
+        
+        // Reload notes to ensure consistency (async, doesn't block navigation)
+        loadNotes({ vaultPath, sessionId });
+      } else {
+        notifications.show({
+          title: 'Failed to create note',
+          message: result.error_message || 'An unexpected error occurred',
+          color: 'red',
+          icon: <Icons.warning size="sm" />
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create note:', error);
+      notifications.show({
+        title: 'Failed to create note',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        color: 'red',
+        icon: <Icons.warning size="sm" />
+      });
+    }
+  };
+
+  const handleContextMenuAddWhiteboard = async () => {
+    if (contextMenu.type !== 'folder' || !contextMenu.targetFolder) return;
+    
+    setContextMenu(prev => ({ ...prev, opened: false }));
+    
+    try {
+      const result = await api.createNote(
+        vaultPath,
+        sessionId,
+        'Untitled Whiteboard',
+        '',
+        [],
+        contextMenu.targetFolder || undefined,
+        'whiteboard'
+      );
+      
+      if (result.success && result.note) {
+        // Expand the parent folder if needed
+        if (contextMenu.targetFolder) {
+          expandFolder(contextMenu.targetFolder);
+        }
+        
+        // Add the note to the store immediately to prevent race condition
+        const noteMetadata: NoteMetadata = {
+          id: result.note.id,
+          title: result.note.title,
+          note_type: result.note.note_type,
+          content_preview: result.note.content.substring(0, 100),
+          created_at: result.note.created_at,
+          updated_at: result.note.updated_at,
+          tags: result.note.tags,
+          ...(result.note.folder_path && { folder_path: result.note.folder_path })
+        };
+        addNote(noteMetadata);
+        
+        // Navigate to the new whiteboard for editing - note is now in store
+        navigate(`/documents/${result.note.id}`);
+        
+        // Reload notes to ensure consistency (async, doesn't block navigation)
+        loadNotes({ vaultPath, sessionId });
+      } else {
+        notifications.show({
+          title: 'Failed to create whiteboard',
+          message: result.error_message || 'An unexpected error occurred',
+          color: 'red',
+          icon: <Icons.warning size="sm" />
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create whiteboard:', error);
+      notifications.show({
+        title: 'Failed to create whiteboard',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        color: 'red',
+        icon: <Icons.warning size="sm" />
+      });
     }
   };
 
@@ -618,12 +813,22 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
       if (type === 'folder') {
         success = await api.deleteFolder(vaultPath, sessionId, target);
         if (!success) {
-          alert('Failed to delete folder. The folder may contain notes or subfolders.');
+          notifications.show({
+            title: 'Failed to delete folder',
+            message: 'The folder may contain notes or subfolders that need to be removed first.',
+            color: 'red',
+            icon: <Icons.warning size="sm" />
+          });
         }
       } else {
         success = await api.deleteNote(vaultPath, sessionId, target);
         if (!success) {
-          alert('Failed to delete note. Please try again.');
+          notifications.show({
+            title: 'Failed to delete note',
+            message: 'The operation was not successful. Please try again.',
+            color: 'red',
+            icon: <Icons.warning size="sm" />
+          });
         }
       }
 
@@ -632,7 +837,12 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
       }
     } catch (error) {
       console.error(`Failed to delete ${type}:`, error);
-      alert(`Failed to delete ${type}. Please try again.`);
+      notifications.show({
+        title: `Failed to delete ${type}`,
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        color: 'red',
+        icon: <Icons.warning size="sm" />
+      });
     }
   };
 
@@ -703,7 +913,12 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
           }
           loadNotes({ vaultPath, sessionId });
         } else {
-          alert('Failed to move note. Please try again.');
+          notifications.show({
+            title: 'Failed to move note',
+            message: 'The operation was not successful. Please try again.',
+            color: 'red',
+            icon: <Icons.warning size="sm" />
+          });
         }
       } else if (dragItem.type === 'folder') {
         // Moving a folder
@@ -722,7 +937,12 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
           
           // Prevent moving a folder into itself or its descendants
           if (newPath.startsWith(dragItem.folderPath + '/') || newPath === dragItem.folderPath) {
-            alert('Cannot move a folder into itself or its descendants.');
+            notifications.show({
+              title: 'Invalid move operation',
+              message: 'Cannot move a folder into itself or its descendants.',
+              color: 'orange',
+              icon: <Icons.warning size="sm" />
+            });
             return;
           }
           
@@ -740,13 +960,23 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
             }
             loadNotes({ vaultPath, sessionId });
           } else {
-            alert('Failed to move folder. Please try again.');
+            notifications.show({
+              title: 'Failed to move folder',
+              message: 'The operation was not successful. Please try again.',
+              color: 'red',
+              icon: <Icons.warning size="sm" />
+            });
           }
         }
       }
     } catch (error) {
       console.error('Failed to move item:', error);
-      alert('Failed to move item. Please try again.');
+      notifications.show({
+        title: 'Failed to move item',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        color: 'red',
+        icon: <Icons.warning size="sm" />
+      });
     }
   };
 
@@ -911,12 +1141,33 @@ export const DraggableTreeNotesList = React.memo(function DraggableTreeNotesList
           </Menu.Target>
           <Menu.Dropdown>
             {contextMenu.type === 'folder' && (
-              <Menu.Item
-                leftSection={<Icons.edit style={{ width: rem(14), height: rem(14) }} />}
-                onClick={handleContextMenuRename}
-              >
-                Rename Folder
-              </Menu.Item>
+              <>
+                <Menu.Item
+                  leftSection={<Icons.folderPlus style={{ width: rem(14), height: rem(14) }} />}
+                  onClick={handleContextMenuAddSubfolder}
+                >
+                  Add Subfolder
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<Icons.filePlus style={{ width: rem(14), height: rem(14) }} />}
+                  onClick={handleContextMenuAddNote}
+                >
+                  Add New Note
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<Icons.whiteboard style={{ width: rem(14), height: rem(14) }} />}
+                  onClick={handleContextMenuAddWhiteboard}
+                >
+                  Add New Whiteboard
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  leftSection={<Icons.edit style={{ width: rem(14), height: rem(14) }} />}
+                  onClick={handleContextMenuRename}
+                >
+                  Rename Folder
+                </Menu.Item>
+              </>
             )}
             <Menu.Item
               color="red"
